@@ -61,6 +61,9 @@ input[type=range]{width:100%;accent-color:var(--fg)}
 /* Reaction sheet */
 .sec-head{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:8px 24px;margin-bottom:18px}
 .sec-head p{margin:0;color:var(--muted);font-size:14px}
+.alive{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:36px;align-items:start}
+.alive-stage orb-avatar{width:40%;cursor:pointer;color:var(--fg)}
+@media (max-width:780px){.alive{grid-template-columns:minmax(0,1fr)}}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(136px,1fr));gap:12px}
 .cell{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:18px 10px 10px;display:flex;flex-direction:column;align-items:center;gap:6px}
 .cell-main{background:none;border:0;padding:0;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:12px;width:100%;border-radius:12px;color:var(--fg)}
@@ -144,6 +147,24 @@ td{color:var(--soft)}
       <div class="snippet">
         <pre class="code" id="snippet"></pre>
         <button class="mini" id="copySnippet" type="button">Copy markup</button>
+      </div>
+    </div>
+  </section>
+
+  <section aria-label="Alive mode">
+    <div class="sec-head"><h2>Alive mode</h2><p>Leave it alone and it entertains itself. Ignore it long enough and it falls asleep.</p></div>
+    <div class="alive">
+      <div class="stage alive-stage" id="aliveStage">
+        <orb-avatar id="pet" alive idle-time="2.5" sleep-after="40" mode="drift" shadow color="#9b63f7" label="Alive orb"></orb-avatar>
+        <span class="stage-hint" id="petStatus">Waiting for something to happen…</span>
+      </div>
+      <div class="controls">
+        <div><p class="label">Play an emote</p><div class="chips" id="emoteChips"></div></div>
+        <div class="actions">
+          <button class="btn" id="sleepBtn" type="button">Fall asleep</button>
+          <button class="btn" id="petPoke" type="button">Poke</button>
+        </div>
+        <p class="note">This one plays an emote every few seconds so you can see them all. In your app, <code>idle-time</code> sets how long it waits (8 seconds by default) and <code>sleep-after</code> how long until it dozes off. Move your cursor close or poke it to wake it up.</p>
       </div>
     </div>
   </section>
@@ -336,6 +357,21 @@ for (const k of OrbAvatar.reactions){
   cell.querySelector('.mini').addEventListener('click', () => copy(o.toSVG(), `${label} SVG copied`));
 }
 
+/* alive mode */
+const pet = $('pet'), petStatus = $('petStatus'), emoteEl = $('emoteChips');
+for (const k of OrbAvatar.emotes){
+  const b = document.createElement('button'); b.type='button'; b.className='chip'; b.id='emote-'+k; b.textContent = OrbAvatar.reactionLabel(k);
+  b.addEventListener('click', () => pet.emote(k)); emoteEl.appendChild(b);
+}
+const labelOf = k => OrbAvatar.reactionLabel(k);
+let statusT;
+pet.addEventListener('emote', e => { clearTimeout(statusT); const n = e.detail.name;
+  petStatus.textContent = n==='doze' ? 'Getting sleepy…' : n==='wake' ? 'Huh? I’m up!' : `${labelOf(n)}`;
+  statusT = setTimeout(() => { petStatus.textContent = pet.asleep ? 'Asleep. Move your cursor close or poke it.' : 'Idle'; }, n==='doze' ? 5200 : 3000); });
+pet.addEventListener('click', () => pet.poke());
+$('petPoke').addEventListener('click', () => pet.poke());
+$('sleepBtn').addEventListener('click', () => pet.sleep());
+
 /* sidebar crew */
 const CREW = [
   {name:'Chief', color:'mint', time:'9:41', script:[['working','Assigning this week’s close tasks'],['done','Close checklist sent to the team'],['idle','Waiting on Ledger'],['thinking','Re-planning around the audit date']]},
@@ -348,7 +384,7 @@ const CREW = [
 const crewEl = $('crew');
 CREW.forEach((c,i) => {
   const row = document.createElement('div'); row.className = 'row'+(i===0?' sel':'');
-  row.innerHTML = `<div class="av"><orb-avatar reaction="${c.script[0][0]}" color="${COLORS[c.color][1]}" size="42" mode="wander" label="${c.name}"></orb-avatar>${c.badge?'<span class="dot" aria-label="Unread"></span>':''}</div><div class="meta"><div class="l1"><b>${c.name}</b><time>${c.time}</time></div><div class="st"></div></div>`;
+  row.innerHTML = `<div class="av"><orb-avatar reaction="${c.script[0][0]}" color="${COLORS[c.color][1]}" size="42" mode="wander" alive idle-time="7" label="${c.name}"></orb-avatar>${c.badge?'<span class="dot" aria-label="Unread"></span>':''}</div><div class="meta"><div class="l1"><b>${c.name}</b><time>${c.time}</time></div><div class="st"></div></div>`;
   crewEl.appendChild(row);
   const o = row.querySelector('orb-avatar'), st = row.querySelector('.st'); st.textContent = c.script[0][1];
   let idx = 0;

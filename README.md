@@ -19,6 +19,7 @@ Chibi teammate avatars with faces painted onto a real sphere.
 - [Quick start](#quick-start)
 - [Install](#install)
 - [Reactions](#reactions)
+- [Alive mode](#alive-mode)
 - [Look modes](#look-modes)
 - [Attributes](#attributes)
 - [JavaScript API](#javascript-api)
@@ -93,6 +94,44 @@ Tapping or clicking an orb does nothing by default; call `poke()` to make it rea
 orb.addEventListener('click', () => orb.poke());
 ```
 
+## Alive mode
+
+Add `alive` and the orb lives a little life on its own. While its reaction is `idle` and nobody is interacting, it plays a random emote every so often. Ignored for long enough, it nods off and falls asleep. Moving the cursor near it, poking it, or giving it a new reaction wakes it up with a startle.
+
+```html
+<orb-avatar alive></orb-avatar>
+<orb-avatar alive idle-time="4" sleep-after="120" emotes="yawn whistle cheeky"></orb-avatar>
+```
+
+Emotes never interrupt a reaction your app sets: an orb that is `working` or `needs` stays that way. `orb.emote(name)` plays one on demand in any reaction.
+
+| Emote | What happens |
+|---|---|
+| `yawn` | Squeezes its eyes, tilts back with a big inhale, shivers, and tears up a little |
+| `shifty` | Narrows its eyes and glances suspiciously left and right |
+| `sneeze` | "Ah… ah…" wind-up, then ACHOO with a spray and a body jiggle |
+| `hiccup` | Three hiccups, each a little jolt with wide eyes and a "hic!" |
+| `whistle` | Content closed eyes, a lazy sway and floating music notes |
+| `cheeky` | Alternating winks with head tilts and a blush |
+| `vibe` | Bobs and sways to a beat with music notes |
+| `peekaboo` | Turns its back on you, peeks around the edge, then spins back: boo! |
+| `boop` | Leans in close to the screen and knocks on the glass twice |
+| `derp` | One tiny eye, one huge eye, head tilted, then shakes it off |
+| `idea` | Ponders, then a lightbulb pops on |
+| `fly` | Tracks a buzzing fly with its eyes, goes cross-eyed when it lands on its head, then shakes it off |
+| `bubble` | Blows a bubble-gum bubble, watching it cross-eyed until it pops and splats its face |
+| `doze` | Head droops, jerks awake once, then falls asleep (not picked at random; used by `sleep-after` and `sleep()`) |
+| `wake` | Startled awake with a "!" and a quick look around (played when a sleeping orb is woken) |
+
+| Attribute | Default | Description |
+|---|---|---|
+| `alive` | off | Turns alive mode on. Boolean. |
+| `idle-time` | `8` | Average seconds between emotes. The actual gap varies a little each time. |
+| `sleep-after` | `60` | Seconds without interaction before it falls asleep. `0` never sleeps. |
+| `emotes` | all | Space-separated list of emotes it may pick from, such as `"yawn whistle cheeky"`. |
+
+Add your own with `OrbAvatar.defineEmote(name, { duration, weight, kicks, feats, motion, extra })`. It takes the same fields as a [custom reaction](#custom-reactions), plus `duration` in seconds, `weight` (how often it is picked relative to others, `0` for never) and `kicks`, a list of `[time, strength]` jiggles. `feats(t, e)` and `motion(t, e)` receive `e`, the seconds since the emote started.
+
 ## Look modes
 
 The `mode` attribute controls where the face points.
@@ -130,6 +169,7 @@ Some reactions also steer the gaze (for example, `thinking` looks up and to the 
 | `extras` | on | Floating sparkles, zzz, hearts, sweat drops and the pulse ring. Set `extras="off"` for dense lists. |
 | `static` | off | Draws one frame and stops animating. Use for long lists, thumbnails and exports. Boolean. |
 | `label` | reaction name | Accessible name announced by screen readers. |
+| `alive`, `idle-time`, `sleep-after`, `emotes` | | See [Alive mode](#alive-mode). |
 | `follow` | off | Older shortcut for `mode="follow"`. Still supported. |
 
 Boolean attributes are on when present: `<orb-avatar shadow static>`. `shadow="false"` and `shadow="off"` also count as off.
@@ -150,6 +190,10 @@ orb.poke(1.5);                   // stronger jiggle
 orb.poke(1, { react: false });   // jiggle only, no face change
 orb.spin();                      // full 360° turn
 orb.blink();                     // blink now
+orb.emote('sneeze');             // play an emote now
+orb.sleep();                     // doze off and sleep until woken
+orb.wakeUp();                    // wake a sleeping orb
+orb.asleep;                      // true while sleeping
 
 orb.lookAt(400, 300);            // look at a point, in viewport (client) pixels
 orb.lookAt();                    // release; back to the current mode
@@ -167,6 +211,8 @@ Static members:
 | `OrbAvatar.reactionLabel(name)` | Human-readable label, such as `"Needs you"`. |
 | `OrbAvatar.defineReaction(name, def)` | Register a custom reaction. See [Custom reactions](#custom-reactions). |
 | `OrbAvatar.shapes` | Shape helpers for building faces. |
+| `OrbAvatar.emotes` | Array of emotes that alive orbs pick from. |
+| `OrbAvatar.defineEmote(name, def)` | Register a custom emote. See [Alive mode](#alive-mode). |
 | `OrbAvatar.quality` | `'auto'` (default) adapts detail to the device. Set `0` (full), `1` or `2` (lightest) to force a level. |
 | `OrbAvatar.qualityLevel` | The level currently in use, `0` to `2`. |
 
@@ -177,9 +223,10 @@ Static members:
 | Event | `detail` | Fires when |
 |---|---|---|
 | `reactionchange` | `{ from, to }` | The `reaction` changes. |
+| `emote` | `{ name }` | An emote starts, including `doze` and `wake`. |
 | `poke` | `{ count, reaction }` | `poke()` plays a reaction. `count` is the number of pokes in the current streak; `reaction` is `surprised`, `giggle` or `dizzy`. |
 
-Both events bubble.
+All events bubble.
 
 ```js
 orb.addEventListener('poke', e => {
