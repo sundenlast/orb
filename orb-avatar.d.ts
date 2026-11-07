@@ -110,6 +110,9 @@ export declare class OrbAvatar extends HTMLElement {
   static reactionLabel(name: OrbReaction): string;
   static defineReaction(name: string, def: OrbReactionDef): void;
   static shapes: OrbShapes;
+  /** 'auto' adapts to the device; 0 = full, 1 = lighter, 2 = lightest. */
+  static quality: 'auto' | 0 | 1 | 2;
+  static readonly qualityLevel: 0 | 1 | 2;
 }
 
 declare global {

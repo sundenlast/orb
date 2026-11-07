@@ -1,6 +1,6 @@
 /*!
  * <orb-avatar>: chibi teammate orbs with faces mapped onto a sphere.
- * Framework-free Web Component. Include this file once, then use <orb-avatar> anywhere.
+ * Framework-free Web Component, rendered on <canvas>. Include this file once, then use <orb-avatar> anywhere.
  * Docs: https://github.com/sundenlast/orb · Demo: https://sundenlast.github.io/orb/
  * MIT License © 2026 Enzo Vasconcelos
  */
@@ -104,32 +104,43 @@ const EX = {
     feats: () => [arcEye(-1), arcEye(1), ...blush()],
     motion: (t, since) => ({ dy: -.05 * Math.abs(Math.sin(since * 11)) * Math.exp(-since * 2.2), rollAdd: .13 * Math.sin(since * 16) * Math.exp(-since * 2.5), yaw: 0, pitch: .2, w: .5 }) },
   dizzy: { label: 'Dizzy', extra: 'stars',
-    feats: t => { const spin = -t * 5;          // each spiral turns around its own center
-      return [-1, 1].map(s => { const cx = s * X, pts = [];
-        for (let i = 0; i <= 90; i++) { const u = i / 90, a = spin + u * TAU * 2.25, r = .008 + .095 * u; pts.push([cx + Math.cos(a) * r, Y + Math.sin(a) * r]); }
-        return F(side(s), stroke(pts, .022), [cx, Y]); }); },
+    feats: t => [-1, 1].map(s => { const cx = s * (X + .015), pts = [], spin = t * 5;   // mirrored spirals, each spinning on its own center
+      for (let i = 0; i <= 80; i++) { const u = i / 80, a = -s * (spin + u * TAU * 1.6), r = .012 + .092 * u; pts.push([cx + Math.cos(a) * r, Y + Math.sin(a) * r]); }
+      return F(side(s), stroke(pts, .034), [cx, Y]); }),
     motion: t => ({ rollAdd: .14 * Math.sin(t * 2.6), yawAdd: .1 * Math.sin(t * 2.1 + 1), yaw: 0, pitch: .05, w: .6 }) },
   wink: { label: 'Wink',
     feats: () => [capEye(-1), arcEye(1), ...blush()],
     motion: t => ({ roll: .14, yaw: .25, pitch: .22, w: .45 }) },
 };
 
-/* ---------- floating extras (screen space, y down, unit ball at origin) ---------- */
-const star = (x, y, r, fill) => { let d = ''; for (let k = 0; k < 8; k++) { const a = k * Math.PI / 4 - Math.PI / 2, rr = k % 2 ? r * .3 : r;
-  d += (k ? 'L' : 'M') + (x + Math.cos(a) * rr).toFixed(3) + ' ' + (y + Math.sin(a) * rr).toFixed(3); } return `<path d="${d}Z" style="fill:${fill}"/>`; };
-const pathOf = pts => 'M' + pts.map(p => p[0].toFixed(3) + ' ' + p[1].toFixed(3)).join('L') + 'Z';
+/* ---------- floating extras: drawn on the canvas in ball units (y down, unit ball at origin) ----------
+   Each takes (R, t, pal): R = { c: context, k: px per unit, W: canvas px, a: layer opacity, dy, ink: text color }. */
+const tracePts = (c, pts) => { c.beginPath(); c.moveTo(pts[0][0], pts[0][1]); for (let i = 1; i < pts.length; i++) c.lineTo(pts[i][0], pts[i][1]); c.closePath(); };
+const starPts = (x, y, r) => { const p = []; for (let k = 0; k < 8; k++) { const a = k * Math.PI / 4 - Math.PI / 2, rr = k % 2 ? r * .3 : r; p.push([x + Math.cos(a) * rr, y + Math.sin(a) * rr]); } return p; };
+const HEART = heart(0, 0, .28), DROP = drop(0, 0, .09);
 const EXTRA = {
-  dots: t => [0, 1, 2].map(i => `<circle cx="${.62 + i * .24}" cy="${-1 - i * .1}" r="${.055 + i * .02}" fill="currentColor" opacity="${(.2 + .8 * Math.max(0, Math.sin(t * 3 - i * .8))).toFixed(2)}"/>`).join(''),
-  zzz: t => [0, 1, 2].map(i => { const p = (t * .35 + i / 3) % 1; return `<text x="${(.68 + p * .4).toFixed(3)}" y="${(-.68 - p * .55).toFixed(3)}" font-size="${(.22 + p * .16).toFixed(3)}" fill="currentColor" opacity="${Math.sin(p * Math.PI).toFixed(2)}" font-family="system-ui, sans-serif" font-weight="700">z</text>`; }).join(''),
-  sparkle: (t, pal) => [[.95, -.85, .17, 0], [-.98, -.55, .11, 1.7], [.7, -1.18, .08, 3.1]].map(([x, y, r, ph]) => star(x, y, r * (.35 + .65 * Math.abs(Math.sin(t * 2.2 + ph))), pal.spark)).join(''),
-  heart: (t, pal) => { const p = (t * .5) % 1; const pts = heart(0, 0, .28).map(([a, b]) => [.85 + .06 * Math.sin(t * 3) + a, -.62 - p * .6 - b]);
-    return `<path d="${pathOf(pts)}" style="fill:${pal.blush}" opacity="${Math.sin(p * Math.PI).toFixed(2)}"/>`; },
-  stars: (t, pal) => [0, 1, 2].map(i => { const a = t * 2.4 + i * TAU / 3, x = Math.cos(a) * .62, y = -1.02 + Math.sin(a) * .14;
-    return Math.sin(a) > -.2 ? star(x, y, .1 + .03 * Math.sin(a), pal.spark) : ''; }).join(''),
-  sweat: (t, pal) => { const p = (t * .6) % 1; const pts = drop(0, 0, .09).map(([a, b]) => [-.93 + a, -.6 + p * .12 - b]);
-    return `<path d="${pathOf(pts)}" style="fill:${pal.tear}" opacity="${(1 - p * .6).toFixed(2)}"/>`; },
+  dots: (R, t) => { const c = R.c; c.fillStyle = R.ink;
+    for (let i = 0; i < 3; i++) { c.globalAlpha = R.a * (.2 + .8 * Math.max(0, Math.sin(t * 3 - i * .8))); c.beginPath(); c.arc(.62 + i * .24, -1 - i * .1, .055 + i * .02, 0, TAU); c.fill(); } },
+  zzz: (R, t) => { const c = R.c; c.save(); c.setTransform(1, 0, 0, 1, 0, 0); c.fillStyle = R.ink;
+    for (let i = 0; i < 3; i++) { const p = (t * .35 + i / 3) % 1; c.globalAlpha = R.a * Math.sin(p * Math.PI);
+      c.font = `700 ${((.22 + p * .16) * R.k).toFixed(1)}px system-ui, sans-serif`;
+      c.fillText('z', (.68 + p * .4) * R.k + R.W / 2, (-.68 - p * .55 + R.dy) * R.k + R.W / 2); }
+    c.restore(); },
+  sparkle: (R, t, pal) => { const c = R.c; c.fillStyle = pal.spark; c.globalAlpha = R.a;
+    for (const [x, y, r, ph] of [[.95, -.85, .17, 0], [-.98, -.55, .11, 1.7], [.7, -1.18, .08, 3.1]]) { tracePts(c, starPts(x, y, r * (.35 + .65 * Math.abs(Math.sin(t * 2.2 + ph))))); c.fill(); } },
+  heart: (R, t, pal) => { const c = R.c, p = (t * .5) % 1, ox = .85 + .06 * Math.sin(t * 3), oy = -.62 - p * .6;
+    c.globalAlpha = R.a * Math.sin(p * Math.PI); c.fillStyle = pal.blush; c.beginPath();
+    HEART.forEach(([a, b], i) => i ? c.lineTo(ox + a, oy - b) : c.moveTo(ox + a, oy - b)); c.closePath(); c.fill(); },
+  stars: (R, t, pal) => { const c = R.c; c.fillStyle = pal.spark; c.globalAlpha = R.a;
+    for (let i = 0; i < 3; i++) { const a = t * 2.4 + i * TAU / 3; if (Math.sin(a) > -.2) { tracePts(c, starPts(Math.cos(a) * .62, -1.02 + Math.sin(a) * .14, .1 + .03 * Math.sin(a))); c.fill(); } } },
+  sweat: (R, t, pal) => { const c = R.c, p = (t * .6) % 1, oy = -.6 + p * .12;
+    c.globalAlpha = R.a * (1 - p * .6); c.fillStyle = pal.tear; c.beginPath();
+    DROP.forEach(([a, b], i) => i ? c.lineTo(-.93 + a, oy - b) : c.moveTo(-.93 + a, oy - b)); c.closePath(); c.fill(); },
 };
-const BACK = { ring: (t, pal) => { const p = (t * .8) % 1; return `<circle r="${(1 + .34 * p).toFixed(3)}" fill="none" style="stroke:${pal.color}" stroke-width=".05" opacity="${((1 - p) * .7).toFixed(2)}"/>`; } };
+const BACK = {
+  ring: (R, t, pal) => { const c = R.c, p = (t * .8) % 1; c.globalAlpha = R.a * (1 - p) * .7; c.strokeStyle = pal.color; c.lineWidth = .05;
+    c.beginPath(); c.arc(0, 0, 1 + .34 * p, 0, TAU); c.stroke(); },
+};
 
 /* ---------- morphing: resample every shape to the same point count, then blend slot by slot ---------- */
 const NPTS = 96;
@@ -146,9 +157,10 @@ function resample(P) {
   return out;
 }
 const prepCache = {};
+const isStatic = ex => ex.feats.length === 0;
 function prepOf(k, t) {
   const ex = EX[k] || EX.idle, make = () => { const m = {}; for (const f of ex.feats(t)) m[f.key] = { ...f, pts: resample(f.pts) }; return m; };
-  return ex.feats.length === 0 ? (prepCache[k] ||= make()) : make();
+  return isStatic(ex) ? (prepCache[k] ||= make()) : make();
 }
 function mixFeats(A, B, p) {
   const out = {};
@@ -164,14 +176,14 @@ function mixFeats(A, B, p) {
   }
   return out;
 }
-const MKEYS = { dy: 0, sx: 1, sy: 1, s: 1, roll: 0, rollAdd: 0, yawAdd: 0, w: 0 };
+const MKEYS = { dy: 0, s: 1, roll: 0, rollAdd: 0, yawAdd: 0, w: 0 };
 function mixMotion(a, b, p) {
   const o = {}; for (const [k, d] of Object.entries(MKEYS)) o[k] = lerp(a[k] ?? d, b[k] ?? d, p);
   for (const k of ['yaw', 'pitch']) if (a[k] != null || b[k] != null) o[k] = lerp(a[k] ?? b[k], b[k] ?? a[k], p);
   return o;
 }
 
-/* ---------- sphere math ---------- */
+/* ---------- sphere math (allocation-free: results land in P3) ---------- */
 function frame(yaw, pitch, roll) {
   const cp = Math.cos(pitch), f = [Math.sin(yaw) * cp, -Math.sin(pitch), Math.cos(yaw) * cp];
   const rl = Math.hypot(f[2], f[0]) || 1, r = [f[2] / rl, 0, -f[0] / rl];
@@ -179,57 +191,99 @@ function frame(yaw, pitch, roll) {
   const c = Math.cos(roll), s = Math.sin(roll);
   return { f, r: [r[0] * c + u[0] * s, r[1] * c + u[1] * s, r[2] * c + u[2] * s], u: [u[0] * c - r[0] * s, u[1] * c - r[1] * s, u[2] * c - r[2] * s] };
 }
+const P3 = [0, 0, 0];
 function proj(a, b, Fr) {
-  const rho = Math.hypot(a, b); let x, y, z;
-  if (rho < 1e-6) { [x, y, z] = Fr.f; }
-  else { const s = Math.sin(rho) / rho, c = Math.cos(rho);
-    x = Fr.f[0] * c + (a * Fr.r[0] + b * Fr.u[0]) * s; y = Fr.f[1] * c + (a * Fr.r[1] + b * Fr.u[1]) * s; z = Fr.f[2] * c + (a * Fr.r[2] + b * Fr.u[2]) * s; }
-  if (z < 0) { const k = Math.hypot(x, y) || 1; x /= k; y /= k; }
-  return [x, y, z];
+  const rho = Math.sqrt(a * a + b * b), f = Fr.f, r = Fr.r, u = Fr.u; let x, y, z;
+  if (rho < 1e-6) { x = f[0]; y = f[1]; z = f[2]; }
+  else { const s = Math.sin(rho) / rho, c = Math.cos(rho), ra = a * s, rb = b * s;
+    x = f[0] * c + r[0] * ra + u[0] * rb; y = f[1] * c + r[1] * ra + u[1] * rb; z = f[2] * c + r[2] * ra + u[2] * rb; }
+  if (z < 0) { const k = Math.sqrt(x * x + y * y) || 1; x /= k; y /= k; }
+  P3[0] = x; P3[1] = y; P3[2] = z; return P3;
 }
-function faceSVG(Fr, feats, sq, pal, face, warp) {
-  let out = '';
-  for (const ft of Object.values(feats)) {
-    if ((ft.op ?? 1) <= .01) continue;
-    const c = proj(ft.c[0] * face, ft.c[1] * face, Fr);
-    const vis = clamp((c[2] + .12) / .22, 0, 1); if (vis <= 0) continue;
-    const k = ft.fixed ? 1 : sq, cy = ft.bc ?? ft.c[1]; let d = '';
-    for (let i = 0; i < ft.pts.length; i++) {
-      const [a, b] = ft.pts[i], p = proj(a * face, (cy + (b - cy) * k) * face, Fr), w = warp ? warp(p[0], p[1]) : p;
-      d += (i ? 'L' : 'M') + f4(w[0]) + ' ' + f4(w[1]);
+
+/* ---------- soft body: radius = 1 + sum of wobble modes (k = 2, 3, 4), each on a spring resting at 0 ---------- */
+const BODY_N = 72, BCOS = [], BSIN = [];
+for (let i = 0; i < BODY_N; i++) { BCOS.push(Math.cos(i / BODY_N * TAU)); BSIN.push(Math.sin(i / BODY_N * TAU)); }
+const radius = (x, th) => 1 + x[0] * Math.cos(2 * th) + x[1] * Math.sin(2 * th) + x[2] * Math.cos(3 * th) + x[3] * Math.sin(3 * th) + x[4] * Math.cos(4 * th) + x[5] * Math.sin(4 * th);
+
+/* Face drawing. W = warp: { s, sh } for a round body, or { s, sh, x } while jiggling. */
+function drawFace(c, Fr, feats, sq, pal, face, W, stride) {
+  for (const k in feats) {
+    const ft = feats[k], op0 = ft.op ?? 1; if (op0 <= .01) continue;
+    const vis = clamp((proj(ft.c[0] * face, ft.c[1] * face, Fr)[2] + .12) / .22, 0, 1); if (vis <= 0) continue;
+    const kk = ft.fixed ? 1 : sq, cy = ft.bc ?? ft.c[1], P = ft.pts, n = P.length;
+    c.beginPath();
+    for (let i = 0; i < n; i += stride) {
+      const p = proj(P[i][0] * face, (cy + (P[i][1] - cy) * kk) * face, Fr);
+      let X, Y;
+      if (W.x) { const r = radius(W.x, Math.atan2(p[1], p[0])) * W.s; X = p[0] * r; Y = p[1] * r + W.sh; }
+      else { X = p[0] * W.s; Y = p[1] * W.s + W.sh; }
+      i ? c.lineTo(X, Y) : c.moveTo(X, Y);
     }
-    const op = (ft.op ?? 1) * vis;
-    out += `<path d="${d}Z" style="fill:${pal[ft.fill] || ft.fill}"${op < .999 ? ` opacity="${op.toFixed(2)}"` : ''}/>`;
+    c.closePath(); c.globalAlpha = op0 * vis; c.fillStyle = pal[ft.fill] || ft.fill; c.fill();
+  }
+  c.globalAlpha = 1;
+}
+/* SVG markup of a face, used only by toSVG(). */
+function faceSVG(Fr, feats, pal, face) {
+  let out = '';
+  for (const k in feats) {
+    const ft = feats[k], op0 = ft.op ?? 1; if (op0 <= .01) continue;
+    const vis = clamp((proj(ft.c[0] * face, ft.c[1] * face, Fr)[2] + .12) / .22, 0, 1); if (vis <= 0) continue;
+    let d = ''; ft.pts.forEach(([a, b], i) => { const p = proj(a * face, b * face, Fr); d += (i ? 'L' : 'M') + f4(p[0]) + ' ' + f4(p[1]); });
+    const op = op0 * vis;
+    out += `<path d="${d}Z" fill="${pal[ft.fill] || ft.fill}"${op < .999 ? ` opacity="${op.toFixed(2)}"` : ''}/>`;
   }
   return out;
 }
 
-/* ---------- soft body: radius = 1 + sum of wobble modes (k = 2, 3, 4), each on its own spring ---------- */
-const BODY_N = 72, BANG = Array.from({ length: BODY_N }, (_, i) => i / BODY_N * TAU);
-const radius = (x, th) => 1 + x[0] * Math.cos(2 * th) + x[1] * Math.sin(2 * th) + x[2] * Math.cos(3 * th) + x[3] * Math.sin(3 * th) + x[4] * Math.cos(4 * th) + x[5] * Math.sin(4 * th);
-
-/* ---------- shared pointer + animation loop ---------- */
+/* ---------- shared pointer, layout tracking, quality governor and animation loop ---------- */
 const pointer = { x: 0, y: 0, active: false, t: 0 };
-let listening = false;
+let listening = false, layoutVer = 0, frameNo = 0;
 function listen() {
   if (listening) return; listening = true;
   addEventListener('pointermove', e => { pointer.x = e.clientX; pointer.y = e.clientY; pointer.active = true; pointer.t = performance.now(); }, { passive: true });
   document.documentElement.addEventListener('pointerleave', () => { pointer.active = false; });
   addEventListener('blur', () => { pointer.active = false; });
+  const bump = () => { layoutVer++; };
+  addEventListener('scroll', bump, { capture: true, passive: true });
+  addEventListener('resize', bump, { passive: true });
+}
+// Quality levels: outline detail (stride) and canvas resolution cap. Level 2 also animates at half rate.
+const LEVELS = [{ stride: 1, dpr: 2 }, { stride: 2, dpr: 1.5 }, { stride: 3, dpr: 1 }];
+const Q = { level: 0, auto: true, ema: 1, iv: 16.7, bad: 0, good: 0 };
+function setLevel(l) { Q.level = clamp(l, 0, 2); Q.bad = Q.good = 0; for (const o of live) { o._fit(); o._sig = null; } }
+function govern(cost, iv) {
+  if (!Q.auto || iv > 120) return;            // a long gap means the tab was hidden, not that we were slow
+  Q.ema += (cost - Q.ema) * .08; Q.iv += (iv - Q.iv) * .08;
+  const slow = Q.ema > 6 || Q.iv > 24, fast = Q.ema < 2.5 && Q.iv < 19;
+  Q.bad = slow ? Q.bad + 1 : 0; Q.good = fast ? Q.good + 1 : 0;
+  if (Q.bad > 40 && Q.level < 2) setLevel(Q.level + 1);
+  else if (Q.good > 360 && Q.level > 0) setLevel(Q.level - 1);
 }
 const live = new Set(); let raf = 0, last = 0;
 function loop(ms) {
-  const dt = Math.min(1 / 30, Math.max(0, (ms - last) / 1000)); last = ms; const t = ms / 1000;
+  const iv = ms - last, dtRaw = Math.min(.1, Math.max(0, iv / 1000)), t = ms / 1000; last = ms; frameNo++;
   if (pointer.active && ms - pointer.t > 6000) pointer.active = false;
-  const act = []; for (const o of live) if (o._visible && !o._static) act.push(o);
-  for (const o of act) o._rect = (o._target || ((o._follow || o._mode === 'follow') && pointer.active)) ? o.getBoundingClientRect() : null;  // read all, then write all
-  for (const o of act) o._update(dt, t);
+  const t0 = performance.now(), half = Q.level >= 2, act = [];
+  for (const o of live) if (o._visible && !o._static && o._cw) act.push(o);
+  for (const o of act) {                       // read layout first (only when it may have changed), then draw
+    if ((o._target || o._followMode() && pointer.active) && (o._rectVer !== layoutVer || frameNo % 30 === 0)) { o._rect = o.getBoundingClientRect(); o._rectVer = layoutVer; }
+  }
+  for (const o of act) {
+    if (half && (frameNo + o._slot) & 1) { o._acc += dtRaw; continue; }
+    const dt = Math.min(.1, dtRaw + o._acc); o._acc = 0; o._update(dt, t);
+  }
+  govern(performance.now() - t0, iv);
   raf = live.size ? requestAnimationFrame(loop) : 0;
 }
 const wake = () => { if (!raf && live.size) { last = performance.now(); raf = requestAnimationFrame(loop); } };
-const io = new IntersectionObserver(es => { for (const e of es) e.target._visible = e.isIntersecting; }, { rootMargin: '120px' });
+const io = new IntersectionObserver(es => { for (const e of es) { const o = e.target; o._visible = e.isIntersecting; if (o._visible) o._sig = null; } }, { rootMargin: '120px' });
+const ro = new ResizeObserver(es => { for (const e of es) e.target._resized(e.contentRect.width); });
 const parseGaze = v => { if (!v) return null; const p = v.split(/[\s,]+/).map(Number); return p.length >= 2 && p.every(Number.isFinite) ? [p[0] * Math.PI / 180, p[1] * Math.PI / 180] : null; };
 const on = v => v !== null && v !== 'false' && v !== 'off';
+const CANVAS_SCALE = 3.2 / 2.08;               // canvas spans ±1.6 ball radii; the element box spans ±1.04
+let slots = 0;
 
 const ATTRS = ['reaction', 'mode', 'color', 'eye-color', 'size', 'follow', 'shadow', 'extras', 'face-scale', 'morph', 'jelly', 'gaze', 'static', 'label'];
 
@@ -238,16 +292,24 @@ class OrbAvatar extends HTMLElement {
   static get reactions() { return Object.keys(EX).filter(k => !EX[k].hidden); }
   static reactionLabel(name) { return (EX[name] || {}).label || name; }
   static defineReaction(name, def) { EX[name] = { label: name, ...def }; delete prepCache[name]; }
+  /** 'auto' (default) adapts to the device; 0 = full, 1 = lighter, 2 = lightest. */
+  static get quality() { return Q.auto ? 'auto' : Q.level; }
+  static set quality(v) { if (v === 'auto') { Q.auto = true; setLevel(0); } else { Q.auto = false; setLevel(+v || 0); } }
+  static get qualityLevel() { return Q.level; }
 
   constructor() {
     super();
     const root = this.attachShadow({ mode: 'open' });
-    root.innerHTML = `<style>:host{display:inline-block;width:64px;aspect-ratio:1;flex:none;vertical-align:middle;line-height:0;-webkit-tap-highlight-color:transparent}svg{width:100%;height:100%;display:block;overflow:visible}</style>`
-      + `<svg viewBox="-1.04 -1.04 2.08 2.08" role="img" part="svg"><ellipse class="sh" cx="0" cy="1.16" rx=".62" ry=".06" display="none"/><g class="xb"></g><path class="bd" part="body"/><g class="fc"></g><g class="xf"></g></svg>`;
-    const q = s => root.querySelector(s);
-    this._svg = q('svg'); this._sh = q('.sh'); this._xb = q('.xb'); this._bd = q('.bd'); this._fc = q('.fc'); this._xf = q('.xf');
-    this._expr = 'idle'; this._base = 'idle'; this._override = null; this._overrideUntil = 0; this._pokeAt = -9; this._pokes = []; this._mode = 'drift'; this._wTarget = null; this._wNext = 0; this._ph = Math.random() * 20;
+    root.innerHTML = '<style>:host{display:inline-block;position:relative;width:64px;aspect-ratio:1;flex:none;vertical-align:middle;line-height:0;-webkit-tap-highlight-color:transparent}'
+      + `canvas{position:absolute;left:50%;top:50%;width:${(CANVAS_SCALE * 100).toFixed(2)}%;height:${(CANVAS_SCALE * 100).toFixed(2)}%;transform:translate(-50%,-50%);pointer-events:none}i{display:none}</style>`
+      + '<canvas part="canvas"></canvas><i></i>';
+    this._canvas = root.querySelector('canvas'); this._probe = root.querySelector('i'); this._ctx = this._canvas.getContext('2d');
+    this._cw = 0; this._cssW = 0; this._sig = null; this._slot = slots++; this._acc = 0; this._rectVer = -1; this._inkAt = 0; this._colorVer = 0;
+    this._expr = 'idle'; this._base = 'idle'; this._override = null; this._overrideUntil = 0; this._pokeAt = -9; this._pokes = [];
+    this._mode = 'drift'; this._wTarget = null; this._wNext = 0; this._ph = Math.random() * 20;
+    this._raw = { color: '#f1efe9', eye: '#141418' };
     this._pal = { color: '#f1efe9', eye: '#141418', hi: '#ffffff', blush: '#ff6f91', tear: '#a8dcff', spark: '#ffe08a' };
+    this._ink = '#888';
     this._face = 1.6; this._morph = .42; this._jelly = .6; this._gaze = null;
     this._follow = false; this._shadow = false; this._extras = true; this._static = false; this._visible = true; this._target = null;
     this._yaw = .32; this._pitch = .26; this._roll = 0; this._vy = 0; this._vp = 0; this._vr = 0; this._init = false;
@@ -255,18 +317,22 @@ class OrbAvatar extends HTMLElement {
     this._jx = [0, 0, 0, 0, 0, 0]; this._jv = [0, 0, 0, 0, 0, 0];
     this._t = performance.now() / 1000; this._nextBlink = this._t + 1 + Math.random() * 3; this._blinkAt = -9; this._spinAt = -9;
   }
-  connectedCallback() { listen(); live.add(this); io.observe(this); this._aria(); this._update(0, performance.now() / 1000); wake(); }
-  disconnectedCallback() { live.delete(this); io.unobserve(this); }
+  connectedCallback() {
+    listen(); live.add(this); io.observe(this); ro.observe(this);
+    if (!this.hasAttribute('role')) this.setAttribute('role', 'img');
+    this._colors(); this._aria(); this._update(0, performance.now() / 1000); wake();
+  }
+  disconnectedCallback() { live.delete(this); io.unobserve(this); ro.unobserve(this); }
   attributeChangedCallback(n, _, v) {
     switch (n) {
       case 'reaction': { const e = v && EX[v] && !EX[v].hidden ? v : 'idle', from = this._base; this._base = e; this._override = null; this._show(e);
         if (from !== e) this.dispatchEvent(new CustomEvent('reactionchange', { detail: { from, to: e }, bubbles: true })); break; }
       case 'mode': this._mode = ['follow', 'wander', 'fixed', 'drift'].includes(v) ? v : 'drift'; break;
-      case 'color': this._pal.color = v || '#f1efe9'; break;
-      case 'eye-color': this._pal.eye = v || '#141418'; break;
+      case 'color': this._raw.color = v || '#f1efe9'; this._colors(); break;
+      case 'eye-color': this._raw.eye = v || '#141418'; this._colors(); break;
       case 'size': this.style.width = v == null ? '' : (/^\d+(\.\d+)?$/.test(v) ? v + 'px' : v); break;
       case 'follow': this._follow = on(v); break;   // legacy alias for mode="follow"
-      case 'shadow': this._shadow = on(v); this._sh.setAttribute('display', this._shadow ? 'inline' : 'none'); break;
+      case 'shadow': this._shadow = on(v); break;
       case 'extras': this._extras = v === null || on(v); break;
       case 'face-scale': this._face = num(v, 1.6); break;
       case 'morph': this._morph = Math.max(0, num(v, .42)); break;
@@ -274,15 +340,15 @@ class OrbAvatar extends HTMLElement {
       case 'gaze': this._gaze = parseGaze(v); break;
       case 'static': this._static = on(v); break;
     }
-    this._aria();
+    this._sig = null; this._aria();
     if (this.isConnected && (this._static || !raf)) this._update(0, performance.now() / 1000);
   }
 
   /* public API */
   get reaction() { return this._base; }
+  set reaction(v) { this.setAttribute('reaction', v); }
   get mode() { return this._mode; }
   set mode(v) { this.setAttribute('mode', v); }
-  set reaction(v) { this.setAttribute('reaction', v); }
   react(name) { this.reaction = name; return this; }
   poke(force = 1, { react = true } = {}) {
     const j = this._jelly * force, now = performance.now() / 1000;
@@ -297,15 +363,27 @@ class OrbAvatar extends HTMLElement {
     wake(); return this;
   }
   spin() { this._spinAt = performance.now() / 1000; this.poke(.5, { react: false }); return this; }
-  blink() { this._blinkAt = performance.now() / 1000; return this; }
-  lookAt(x, y) { this._target = (x == null || y == null) ? null : { x, y }; wake(); return this; }
+  blink() { this._blinkAt = performance.now() / 1000; wake(); return this; }
+  lookAt(x, y) { this._target = (x == null || y == null) ? null : { x, y }; this._rectVer = -1; wake(); return this; }
   toSVG({ size = 512 } = {}) {
     const Fr = this._Fr || frame(.32, .26, 0);
-    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="-1.02 -1.02 2.04 2.04" width="${size}" height="${size}"><circle r="1" style="fill:${this._pal.color}"/>${faceSVG(Fr, prepOf(this._expr, this._t + this._ph), 1, this._pal, this._face, null)}</svg>`;
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="-1.02 -1.02 2.04 2.04" width="${size}" height="${size}"><circle r="1" fill="${this._pal.color}"/>${faceSVG(Fr, prepOf(this._expr, this._t + this._ph), this._pal, this._face)}</svg>`;
   }
 
   /* internals */
-  _aria() { this._svg.setAttribute('aria-label', this.getAttribute('label') || OrbAvatar.reactionLabel(this._base)); }
+  _followMode() { return this._mode === 'follow' || (this._follow && this._mode === 'drift'); }
+  _aria() { if (this.isConnected) this.setAttribute('aria-label', this.getAttribute('label') || OrbAvatar.reactionLabel(this._base)); }
+  _colors() {                           // resolve any CSS color (including var(--x)) to something canvas understands
+    if (!this.isConnected) return;
+    const pr = this._probe;
+    for (const k of ['color', 'eye']) { pr.style.color = ''; pr.style.color = this._raw[k]; this._pal[k] = getComputedStyle(pr).color || this._raw[k]; }
+    this._ink = getComputedStyle(this).color; this._colorVer++; this._sig = null;
+  }
+  _resized(w) { this._cssW = w; this._fit(); this._sig = null; if (this._static || !raf) this._update(0, performance.now() / 1000); }
+  _fit() {
+    const dpr = Math.min(window.devicePixelRatio || 1, LEVELS[Q.level].dpr), px = Math.max(0, Math.round(this._cssW * CANVAS_SCALE * dpr));
+    if (px !== this._cw) { this._canvas.width = this._canvas.height = px; this._cw = px; this._sig = null; }
+  }
   _show(e, kick = true) {               // morph the displayed face to e (a base reaction or a poke reaction)
     if (e === this._expr) return;
     const from = this._expr;
@@ -329,8 +407,9 @@ class OrbAvatar extends HTMLElement {
     this._tp = (st || dur <= 0) ? 1 : Math.min(1, this._tp + dt / dur);
     if (!st && t > this._nextBlink) { this._blinkAt = t; this._nextBlink = t + (Math.random() < .2 ? .32 : 2.2 + Math.random() * 4); }
     if (this._override && t > this._overrideUntil) { this._override = null; this._show(this._base, false); }
-    const mode = this._follow && this._mode === 'drift' ? 'follow' : this._mode, fixed = mode === 'fixed' && !this._override;
-    const ex = EX[this._expr] || EX.idle, lt = calm ? 0 : t + this._ph, p = ease(this._tp), since = t - this._pokeAt;
+    const mode = this._followMode() ? 'follow' : this._mode, fixed = mode === 'fixed' && !this._override;
+    // lt drives movement (frozen for reduced motion); ft drives the face's own animation (spinning spirals, tears)
+    const ex = EX[this._expr] || EX.idle, lt = calm ? 0 : t + this._ph, ft = st ? 0 : t + this._ph, p = ease(this._tp), since = t - this._pokeAt;
     const mTo = (ex.motion && !fixed) ? ex.motion(lt, since) : {}, m = this._tp < 1 ? mixMotion(fixed ? {} : this._fromM, mTo, p) : mTo; this._m = m;
 
     let ly, lp; const g = this._gaze || [.32, .26];
@@ -348,39 +427,61 @@ class OrbAvatar extends HTMLElement {
     else { const K = 95, Dm = 11, step = (x, v, g) => { v += (g - x) * K * dt; v *= Math.exp(-Dm * dt); return [x + v * dt, v]; };
       [this._yaw, this._vy] = step(this._yaw, this._vy, T[0]); [this._pitch, this._vp] = step(this._pitch, this._vp, T[1]); [this._roll, this._vr] = step(this._roll, this._vr, T[2]); }
 
-    this._jellyStep(dt, t, m, calm);
-    const target = prepOf(this._expr, lt);
-    this._cur = (this._tp < 1 && this._fromSnap) ? mixFeats(this._fromSnap, target, p) : target;
-    this._render(this._tp < 1 ? p : 1, m, calm);
+    this._jellyStep(dt);
+    const dyn = !isStatic(ex) || this._tp < 1;
+    if (dyn || !this._cur || this._curExpr !== this._expr) {
+      const target = prepOf(this._expr, ft);
+      this._cur = (this._tp < 1 && this._fromSnap) ? mixFeats(this._fromSnap, target, p) : target; this._curExpr = this._expr;
+    }
+    this._render(this._tp < 1 ? p : 1, m, calm, dyn);
   }
-  _jellyStep(dt, t, m, calm) {
-    const j = this._jelly, x = this._jx, v = this._jv;   // only pokes and reaction changes kick these; at rest it is a perfect circle
+  _jellyStep(dt) {                      // only pokes and reaction changes kick these; at rest the ball is a perfect circle
+    const j = this._jelly, x = this._jx, v = this._jv;
     if (this._static) { for (let i = 0; i < 6; i++) { x[i] = 0; v[i] = 0; } return; }
-    const w = lerp(26, 15, j), D = lerp(11, 3.6, j);
-    for (let i = 0; i < 6; i++) { const k = i > 1 ? w * 1.35 : w; v[i] += (-k * k * x[i] - D * v[i]) * dt; x[i] = clamp(x[i] + v[i] * dt, -.3, .3); }
+    const w = lerp(26, 15, j), D = lerp(11, 3.6, j), n = Math.ceil(dt * 60 - 1e-6), h = n ? dt / n : 0;
+    for (let s = 0; s < n; s++) for (let i = 0; i < 6; i++) { const k = i > 1 ? w * 1.35 : w; v[i] += (-k * k * x[i] - D * v[i]) * h; x[i] = clamp(x[i] + v[i] * h, -.3, .3); }
   }
-  _render(p, m, calm) {
+  _render(p, m, calm, dyn) {
+    const c = this._ctx, W = this._cw; if (!W) return;
     const t = this._t, ex = EX[this._expr] || EX.idle, pal = this._pal, x = this._jx;
     const sp = (t - this._spinAt) / 1.5, spin = (sp >= 0 && sp < 1) ? TAU * ease(sp) : 0;
-    const Fr = frame(this._yaw + spin + (m.yawAdd || 0), clamp(this._pitch, -1.25, 1.25), this._roll + (m.rollAdd || 0));
-    const bl = (t - this._blinkAt) / .15, blink = (ex.blink && this._tp >= 1 && bl >= 0 && bl < 1) ? 1 - Math.sin(bl * Math.PI) * .94 : 1;
+    const yaw = this._yaw + spin + (m.yawAdd || 0), pitch = clamp(this._pitch, -1.25, 1.25), roll = this._roll + (m.rollAdd || 0);
+    const bl = (t - this._blinkAt) / .15, sq = Math.max(.05, (ex.blink && this._tp >= 1 && bl >= 0 && bl < 1) ? 1 - Math.sin(bl * Math.PI) * .94 : 1);
     const s = m.s ?? 1, dy = calm ? 0 : (m.dy || 0);
+    let energy = 0; for (let i = 0; i < 6; i++) energy += Math.abs(x[i]) + Math.abs(this._jv[i]) * .02;
+    const jiggle = energy > 2e-4, fx = this._tp < 1 ? EX[this._fromExpr] : null;
+    const extras = this._extras && ((ex.extra && (EXTRA[ex.extra] || BACK[ex.extra])) || (fx && fx.extra));
+    const stride = Math.max(LEVELS[Q.level].stride, this._cssW < 48 ? 2 : 1);
 
-    const pts = []; let maxY = -9;
-    for (let i = 0; i < BODY_N; i++) { const th = BANG[i], r = radius(x, th) * s, py = Math.sin(th) * r; pts.push([Math.cos(th) * r, py]); if (py > maxY) maxY = py; }
-    const shift = 1 - maxY, flat = dy > -.01 ? clamp(x[0], 0, .25) * .9 : 0, fy = 1 - flat;   // bottom stays on the floor and flattens when squashed
-    let d = '';
-    for (let i = 0; i < BODY_N; i++) { let py = pts[i][1] + shift; if (flat > 0 && py > fy) py = fy + (py - fy) * .25; d += (i ? 'L' : 'M') + f4(pts[i][0]) + ' ' + f4(py + dy); }
-    this._bd.setAttribute('d', d + 'Z'); this._bd.style.fill = pal.color;
+    // Skip the frame entirely when nothing visible changed.
+    const sig = [yaw, pitch, roll, sq, s, dy, W, this._colorVer, stride, this._shadow ? 1 : 0];
+    if (!dyn && !jiggle && !extras && this._sig && sig.every((v, i) => Math.abs(v - this._sig[i]) < 1e-4)) return;
+    this._sig = sig;
+    if (extras && ++this._inkAt % 120 === 0) this._ink = getComputedStyle(this).color;
 
-    const warp = (px, py) => { const r = radius(x, Math.atan2(py, px)) * s; return [px * r, py * r + shift + dy]; };
-    this._fc.innerHTML = faceSVG(Fr, this._cur, Math.max(.05, blink), pal, this._face, warp);
+    const Fr = frame(yaw, pitch, roll), k = W / 3.2;
+    c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, W, W); c.setTransform(k, 0, 0, k, W / 2, W / 2); c.globalAlpha = 1;
+    const R = { c, k, W, a: 1, dy, ink: this._ink };
+    const layer = (tbl, e, op) => { if (extras && e && e.extra && tbl[e.extra] && op > .01) { R.a = op; tbl[e.extra](R, t + this._ph, pal); c.globalAlpha = 1; } };
+    layer(BACK, fx, 1 - p); layer(BACK, ex, p);
 
-    const et = t + this._ph, fx = this._tp < 1 ? EX[this._fromExpr] : null;
-    const layer = (tbl, e, op) => (this._extras && e && e.extra && tbl[e.extra] && op > .01) ? `<g opacity="${op.toFixed(2)}">${tbl[e.extra](et, pal)}</g>` : '';
-    this._xf.innerHTML = `<g transform="translate(0 ${f4(dy)})">${layer(EXTRA, fx, 1 - p)}${layer(EXTRA, ex, p)}</g>`;
-    this._xb.innerHTML = layer(BACK, fx, 1 - p) + layer(BACK, ex, p);
-    if (this._shadow) { this._sh.setAttribute('rx', f4(.62 * (1 + dy * .9) * (1 + x[0] * .6))); this._sh.setAttribute('opacity', (.22 * (1 + dy * 1.5)).toFixed(3)); this._sh.style.fill = pal.color; }
+    if (this._shadow) { c.globalAlpha = .22 * (1 + dy * 1.5); c.fillStyle = pal.color; c.beginPath();
+      c.ellipse(0, 1.16, .62 * (1 + dy * .9) * (1 + x[0] * .6), .06, 0, 0, TAU); c.fill(); c.globalAlpha = 1; }
+
+    c.fillStyle = pal.color; c.beginPath();
+    let warp;
+    if (!jiggle) { const sh = 1 - s + dy; c.arc(0, sh, s, 0, TAU); warp = { s, sh }; }
+    else {                              // jiggling outline; the bottom stays on the floor and flattens when squashed
+      const bs = Math.max(1, stride - 1), rr = []; let maxY = -9;
+      for (let i = 0; i < BODY_N; i += bs) { const th = i / BODY_N * TAU, r = radius(x, th) * s; rr.push(r); if (BSIN[i] * r > maxY) maxY = BSIN[i] * r; }
+      const shift = 1 - maxY, flat = dy > -.01 ? clamp(x[0], 0, .25) * .9 : 0, fy = 1 - flat;
+      for (let i = 0, j = 0; i < BODY_N; i += bs, j++) { let py = BSIN[i] * rr[j] + shift; if (flat > 0 && py > fy) py = fy + (py - fy) * .25; j ? c.lineTo(BCOS[i] * rr[j], py + dy) : c.moveTo(BCOS[i] * rr[j], py + dy); }
+      c.closePath(); warp = { s, sh: shift + dy, x };
+    }
+    c.fill();
+    drawFace(c, Fr, this._cur, sq, pal, this._face, warp, Math.min(stride, 2));
+
+    if (extras) { c.translate(0, dy); layer(EXTRA, fx, 1 - p); layer(EXTRA, ex, p); }
     this._Fr = Fr;
   }
 }
