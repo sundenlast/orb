@@ -2,7 +2,7 @@
 
 export type OrbBuiltInReaction =
   | 'idle' | 'happy' | 'thinking' | 'working' | 'done' | 'needs'
-  | 'sleeping' | 'error' | 'love' | 'sad' | 'wink';
+  | 'sleeping' | 'error' | 'love' | 'sad' | 'dizzy' | 'wink';
 
 /** A built-in reaction, or any name registered with `OrbAvatar.defineReaction`. */
 export type OrbReaction = OrbBuiltInReaction | (string & {});
@@ -13,7 +13,7 @@ export type OrbMode = 'drift' | 'follow' | 'wander' | 'fixed';
 /** Reaction shown briefly after a poke. Escalates with rapid pokes. */
 export type OrbPokeReaction = 'surprised' | 'giggle' | 'dizzy';
 
-export type OrbExtra = 'dots' | 'zzz' | 'sparkle' | 'heart' | 'sweat' | 'ring';
+export type OrbExtra = 'dots' | 'zzz' | 'sparkle' | 'heart' | 'sweat' | 'stars' | 'ring';
 
 /** A point in face space: `a` to the right, `b` up, in sphere radii. */
 export type OrbPoint = [a: number, b: number];

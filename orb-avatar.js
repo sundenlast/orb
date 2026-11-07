@@ -103,11 +103,12 @@ const EX = {
   giggle: { label: 'Giggle', hidden: true,
     feats: () => [arcEye(-1), arcEye(1), ...blush()],
     motion: (t, since) => ({ dy: -.05 * Math.abs(Math.sin(since * 11)) * Math.exp(-since * 2.2), rollAdd: .13 * Math.sin(since * 16) * Math.exp(-since * 2.5), yaw: 0, pitch: .2, w: .5 }) },
-  dizzy: { label: 'Dizzy', hidden: true,
-    feats: () => [-1, 1].map(s => { const cx = s * X, pts = [];
-      for (let i = 0; i <= 60; i++) { const a = i / 60 * TAU * 2.1 * -s, r = .014 + .08 * i / 60; pts.push([cx + Math.cos(a) * r, Y + Math.sin(a) * r]); }
-      return F(side(s), stroke(pts, .036), [cx, Y]); }),
-    motion: (t, since) => ({ rollAdd: .16 * Math.sin(since * 5.5), yawAdd: .12 * Math.sin(since * 4.3 + 1), yaw: 0, pitch: .05, w: .6 }) },
+  dizzy: { label: 'Dizzy', extra: 'stars',
+    feats: t => { const spin = -t * 5;          // each spiral turns around its own center
+      return [-1, 1].map(s => { const cx = s * X, pts = [];
+        for (let i = 0; i <= 90; i++) { const u = i / 90, a = spin + u * TAU * 2.25, r = .008 + .095 * u; pts.push([cx + Math.cos(a) * r, Y + Math.sin(a) * r]); }
+        return F(side(s), stroke(pts, .022), [cx, Y]); }); },
+    motion: t => ({ rollAdd: .14 * Math.sin(t * 2.6), yawAdd: .1 * Math.sin(t * 2.1 + 1), yaw: 0, pitch: .05, w: .6 }) },
   wink: { label: 'Wink',
     feats: () => [capEye(-1), arcEye(1), ...blush()],
     motion: t => ({ roll: .14, yaw: .25, pitch: .22, w: .45 }) },
@@ -123,6 +124,8 @@ const EXTRA = {
   sparkle: (t, pal) => [[.95, -.85, .17, 0], [-.98, -.55, .11, 1.7], [.7, -1.18, .08, 3.1]].map(([x, y, r, ph]) => star(x, y, r * (.35 + .65 * Math.abs(Math.sin(t * 2.2 + ph))), pal.spark)).join(''),
   heart: (t, pal) => { const p = (t * .5) % 1; const pts = heart(0, 0, .28).map(([a, b]) => [.85 + .06 * Math.sin(t * 3) + a, -.62 - p * .6 - b]);
     return `<path d="${pathOf(pts)}" style="fill:${pal.blush}" opacity="${Math.sin(p * Math.PI).toFixed(2)}"/>`; },
+  stars: (t, pal) => [0, 1, 2].map(i => { const a = t * 2.4 + i * TAU / 3, x = Math.cos(a) * .62, y = -1.02 + Math.sin(a) * .14;
+    return Math.sin(a) > -.2 ? star(x, y, .1 + .03 * Math.sin(a), pal.spark) : ''; }).join(''),
   sweat: (t, pal) => { const p = (t * .6) % 1; const pts = drop(0, 0, .09).map(([a, b]) => [-.93 + a, -.6 + p * .12 - b]);
     return `<path d="${pathOf(pts)}" style="fill:${pal.tear}" opacity="${(1 - p * .6).toFixed(2)}"/>`; },
 };

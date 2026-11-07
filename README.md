@@ -74,6 +74,7 @@ Set the face with the `reaction` attribute. Switching reactions morphs the face 
 | `error` | `> <` eyes | Quick shakes and a sweat drop |
 | `love` | Heart eyes with blush | Sways, with a floating heart |
 | `sad` | Droopy lids | Looks down, with a falling tear |
+| `dizzy` | Spinning spiral eyes | Woozy sway, with stars circling overhead |
 | `wink` | One open eye, one closed | Head tilted |
 
 ```html
@@ -86,7 +87,7 @@ document.querySelector('orb-avatar').react('done');
 
 ### Pokes
 
-Tapping or clicking an orb does nothing by default; call `poke()` to make it react. A poke jiggles the ball and plays a short reaction that escalates with rapid pokes: one poke surprises it, a second makes it giggle, and three or more in quick succession leave it dizzy. Afterwards it returns to its current reaction. Pokes never change the `reaction` attribute.
+Tapping or clicking an orb does nothing by default; call `poke()` to make it react. A poke jiggles the ball and plays a short reaction that escalates with rapid pokes: one poke surprises it, a second makes it giggle, and three or more in quick succession leave it `dizzy`, with spinning spiral eyes. Afterwards it returns to its current reaction. Pokes never change the `reaction` attribute.
 
 ```js
 orb.addEventListener('click', () => orb.poke());
@@ -307,7 +308,7 @@ Reaction definition:
 | `feats(t)` | Returns the features. Declare it with no parameter for a static face (it's cached); take `t` (seconds) for animated faces. |
 | `motion(t, sincePoke)` | Optional. Returns `{ yaw, pitch, w, roll, rollAdd, yawAdd, dy, s }`. `yaw`/`pitch` (radians) are blended with the look mode by `w` (0 to 1). `dy` is vertical offset in ball radii (negative is up). `s` is uniform scale. |
 | `blink` | Blink every few seconds. |
-| `extra` | One of `dots`, `zzz`, `sparkle`, `heart`, `sweat`, `ring`. |
+| `extra` | One of `dots`, `zzz`, `sparkle`, `heart`, `sweat`, `stars`, `ring`. |
 | `hidden` | Leave it out of `OrbAvatar.reactions`. |
 
 Shape helpers in `OrbAvatar.shapes`:
