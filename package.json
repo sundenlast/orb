@@ -27,5 +27,6 @@
   "bugs": {
     "url": "https://github.com/sundenlast/orb/issues"
   },
-  "author": "Enzo Vasconcelos"
+  "author": "Enzo Vasconcelos",
+  "license": "MIT"
 }

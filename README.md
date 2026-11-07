@@ -31,6 +31,7 @@ Chibi teammate avatars with faces painted onto a real sphere.
 - [How it works](#how-it-works)
 - [Browser support](#browser-support)
 - [Project layout](#project-layout)
+- [License](#license)
 
 ## Quick start
 
@@ -373,6 +374,11 @@ orb-avatar.d.ts   TypeScript types.
 index.html        Demo and playground (served by GitHub Pages).
 svg/              Ready-made SVG assets.
 package.json      Lets you install from GitHub with npm.
+LICENSE           MIT license.
 ```
 
 To work on the component, open `index.html` in a browser; there is nothing to build.
+
+## License
+
+[MIT](LICENSE) © 2026 Enzo Vasconcelos. Free to use, modify and distribute, including in commercial projects, as long as the copyright notice and license text stay with the code.

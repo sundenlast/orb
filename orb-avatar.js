@@ -2,6 +2,7 @@
  * <orb-avatar>: chibi teammate orbs with faces mapped onto a sphere.
  * Framework-free Web Component. Include this file once, then use <orb-avatar> anywhere.
  * Docs: https://github.com/sundenlast/orb · Demo: https://sundenlast.github.io/orb/
+ * MIT License © 2026 Enzo Vasconcelos
  */
 (() => {
 'use strict';
