@@ -258,7 +258,7 @@ Object.assign(EXTRA, {
     for (let i = 0; i < 5; i++) { const a = -Math.PI / 2 + (i - 2) * .55; c.beginPath(); c.moveTo(Math.cos(a) * .22 * q, y + Math.sin(a) * .22 * q); c.lineTo(Math.cos(a) * .29 * q, y + Math.sin(a) * .29 * q); c.stroke(); }
     c.fillStyle = pal.spark; dot(c, 0, y, .14 * q); c.fillStyle = R.ink; c.fillRect(-.055 * q, y + .11 * q, .11 * q, .065 * q); },
   fly: (R, t, pal) => { const [x, y] = flyAt(R.e), c = R.c, flap = .5 + .5 * Math.sin(R.e * 70); if (x > 1.75) return;
-    c.globalAlpha = R.a * .65; c.fillStyle = '#ffffff';
+    c.globalAlpha = R.a * .4; c.fillStyle = R.ink;
     c.beginPath(); c.ellipse(x - .035, y - .04, .035, .05 * (.4 + .6 * flap), -.5, 0, TAU); c.fill();
     c.beginPath(); c.ellipse(x + .035, y - .04, .035, .05 * (.4 + .6 * flap), .5, 0, TAU); c.fill();
     c.globalAlpha = R.a; c.fillStyle = R.ink; dot(c, x, y, .038);
@@ -379,6 +379,7 @@ function listen() {
   const bump = () => { layoutVer++; };
   addEventListener('scroll', bump, { capture: true, passive: true });
   addEventListener('resize', bump, { passive: true });
+  matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { for (const o of live) o._colors(); });
 }
 // Quality levels: outline detail (stride) and canvas resolution cap. Level 2 also animates at half rate.
 const LEVELS = [{ stride: 1, dpr: 2 }, { stride: 2, dpr: 1.5 }, { stride: 3, dpr: 1 }];
@@ -416,7 +417,7 @@ const on = v => v !== null && v !== 'false' && v !== 'off';
 const CANVAS_SCALE = 3.2 / 2.08;               // canvas spans ±1.6 ball radii; the element box spans ±1.04
 let slots = 0;
 
-const ATTRS = ['reaction', 'mode', 'color', 'eye-color', 'size', 'follow', 'shadow', 'extras', 'face-scale', 'morph', 'jelly', 'gaze', 'static', 'label', 'alive', 'idle-time', 'sleep-after', 'emotes'];
+const ATTRS = ['reaction', 'mode', 'color', 'eye-color', 'size', 'follow', 'shadow', 'extras', 'face-scale', 'morph', 'jelly', 'gaze', 'static', 'label', 'alive', 'idle-time', 'sleep-after', 'emotes', 'particle-color', 'spark-color', 'tear-color'];
 
 class OrbAvatar extends HTMLElement {
   static get observedAttributes() { return ATTRS; }
@@ -477,6 +478,7 @@ class OrbAvatar extends HTMLElement {
       case 'alive': this._alive = on(v); this._nextEmote = performance.now() / 1000 + this._idleTime * (.5 + Math.random() * .6); this._lastAttn = performance.now() / 1000; break;
       case 'idle-time': this._idleTime = Math.max(.5, num(v, 8)); this._nextEmote = performance.now() / 1000 + this._idleTime * (.5 + Math.random() * .6); break;
       case 'sleep-after': this._sleepAfter = Math.max(0, num(v, 60)); break;
+      case 'particle-color': case 'spark-color': case 'tear-color': this._colors(); break;
       case 'emotes': this._emoteList = v ? v.split(/[\s,]+/).filter(Boolean) : null; break;
     }
     this._sig = null; this._aria();
@@ -546,8 +548,14 @@ class OrbAvatar extends HTMLElement {
   _colors() {                           // resolve any CSS color (including var(--x)) to something canvas understands
     if (!this.isConnected) return;
     const pr = this._probe;
-    for (const k of ['color', 'eye']) { pr.style.color = ''; pr.style.color = this._raw[k]; this._pal[k] = getComputedStyle(pr).color || this._raw[k]; }
-    this._ink = getComputedStyle(this).color; this._colorVer++; this._sig = null;
+    const resolve = v => { pr.style.color = ''; pr.style.color = v; return getComputedStyle(pr).color || v; };
+    for (const k of ['color', 'eye']) this._pal[k] = resolve(this._raw[k]);
+    // Particle colors: attribute first, then a CSS custom property (inherited, so a whole app can theme them), then a default.
+    const cs = getComputedStyle(this), pick = (attr, prop, fallback) => { const v = this.getAttribute(attr) || cs.getPropertyValue(prop).trim(); return v ? resolve(v) : fallback; };
+    this._ink = pick('particle-color', '--orb-particle-color', cs.color);
+    this._pal.spark = pick('spark-color', '--orb-spark-color', '#ffe08a');
+    this._pal.tear = pick('tear-color', '--orb-tear-color', '#a8dcff');
+    this._colorVer++; this._sig = null;
   }
   _resized(w) { this._cssW = w; this._fit(); this._sig = null; if (this._static || !raf) this._update(0, performance.now() / 1000); }
   _fit() {
@@ -556,7 +564,7 @@ class OrbAvatar extends HTMLElement {
   }
   _show(e, kick = true) {               // morph the displayed face to e (a base reaction or a poke reaction)
     if (e === this._expr) return;
-    const from = this._expr;
+    const from = this._expr; this._colors();   // pick up theme changes (CSS classes, custom properties) at every face change
     if (this._cur && !this._static && this._morph > 0) { this._fromSnap = this._cur; this._fromM = this._m || {}; this._fromExpr = from; this._tp = 0; }
     else this._tp = 1;
     this._expr = e;
@@ -636,7 +644,7 @@ class OrbAvatar extends HTMLElement {
     const sig = [yaw, pitch, roll, sq, s, dy, W, this._colorVer, stride, this._shadow ? 1 : 0];
     if (!dyn && !jiggle && !extras && this._sig && sig.every((v, i) => Math.abs(v - this._sig[i]) < 1e-4)) return;
     this._sig = sig;
-    if (extras && ++this._inkAt % 120 === 0) this._ink = getComputedStyle(this).color;
+    if (extras && ++this._inkAt % 120 === 0) this._colors();
 
     const Fr = frame(yaw, pitch, roll), k = W / 3.2;
     c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, W, W); c.setTransform(k, 0, 0, k, W / 2, W / 2); c.globalAlpha = 1;

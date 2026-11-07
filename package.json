@@ -1,6 +1,6 @@
 {
   "name": "orb-avatar",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "description": "Chibi teammate avatars with faces mapped onto a sphere. A dependency-free <orb-avatar> Web Component.",
   "main": "orb-avatar.js",
   "browser": "orb-avatar.js",
