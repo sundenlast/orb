@@ -475,7 +475,7 @@ class OrbAvatar extends HTMLElement {
       case 'gaze': this._gaze = parseGaze(v); break;
       case 'static': this._static = on(v); break;
       case 'alive': this._alive = on(v); this._nextEmote = performance.now() / 1000 + this._idleTime * (.5 + Math.random() * .6); this._lastAttn = performance.now() / 1000; break;
-      case 'idle-time': this._idleTime = Math.max(.5, num(v, 8)); break;
+      case 'idle-time': this._idleTime = Math.max(.5, num(v, 8)); this._nextEmote = performance.now() / 1000 + this._idleTime * (.5 + Math.random() * .6); break;
       case 'sleep-after': this._sleepAfter = Math.max(0, num(v, 60)); break;
       case 'emotes': this._emoteList = v ? v.split(/[\s,]+/).filter(Boolean) : null; break;
     }
