@@ -99,10 +99,10 @@ const EX = {
     feats: () => [-1, 1].flatMap(s => { const cx = s * X, k = side(s); return [F(k, ell(cx, Y + .01, .085, .11), [cx, Y + .01]),
       F('h' + k, ell(cx + .032, Y + .05, .03, .03), [cx + .032, Y + .05], 'hi', { bc: Y }),
       F('h2' + k, ell(cx - .03, Y - .04, .014, .014), [cx - .03, Y - .04], 'hi', { bc: Y })]; }),
-    motion: (t, since) => ({ dy: since < .36 ? -.12 * Math.sin(since / .36 * Math.PI) : 0, yaw: 0, pitch: .14, w: .7 }) },
+    motion: (t, e) => ({ dy: e < .36 ? -.12 * Math.sin(e / .36 * Math.PI) : 0, yaw: 0, pitch: .14, w: .7 }) },
   giggle: { label: 'Giggle', hidden: true,
     feats: () => [arcEye(-1), arcEye(1), ...blush()],
-    motion: (t, since) => ({ dy: -.05 * Math.abs(Math.sin(since * 11)) * Math.exp(-since * 2.2), rollAdd: .13 * Math.sin(since * 16) * Math.exp(-since * 2.5), yaw: 0, pitch: .2, w: .5 }) },
+    motion: (t, e) => ({ dy: -.05 * Math.abs(Math.sin(e * 11)) * Math.exp(-e * 2.2), rollAdd: .13 * Math.sin(e * 16) * Math.exp(-e * 2.5), yaw: 0, pitch: .2, w: .5 }) },
   dizzy: { label: 'Dizzy', extra: 'stars',
     feats: t => [-1, 1].map(s => { const cx = s * (X + .015), pts = [], spin = t * 5;   // mirrored spirals, each spinning on its own center
       for (let i = 0; i <= 80; i++) { const u = i / 80, a = -s * (spin + u * TAU * 1.6), r = .012 + .092 * u; pts.push([cx + Math.cos(a) * r, Y + Math.sin(a) * r]); }
@@ -112,6 +112,102 @@ const EX = {
     feats: () => [capEye(-1), arcEye(1), ...blush()],
     motion: t => ({ roll: .14, yaw: .25, pitch: .22, w: .45 }) },
 };
+
+/* ---------- emotes: little moments an alive orb plays on its own while idle ----------
+   Defined like reactions, plus a duration. feats(t, e) and motion(t, e) get e = seconds since the emote started. */
+const PREP = new WeakMap();
+const prepList = list => { let m = PREP.get(list); if (!m) { m = {}; for (const f of list) m[f.key] = { ...f, pts: resample(f.pts) }; PREP.set(list, m); } return m; };
+/* Step through faces over time, morphing briefly at each step: seq(e, [[0, FACE_A], [1.2, FACE_B], ...]) */
+function seq(e, steps, blend = .14) {
+  let i = 0; while (i + 1 < steps.length && e >= steps[i + 1][0]) i++;
+  const cur = prepList(steps[i][1]), d = e - steps[i][0];
+  return Object.values(i > 0 && d < blend ? mixFeats(prepList(steps[i - 1][1]), cur, ease(d / blend)) : cur);
+}
+const env = (e, a, b, c, d) => e < a ? 0 : e < b ? ease((e - a) / (b - a)) : e < c ? 1 : e < d ? 1 - ease((e - c) / (d - c)) : 0;   // rise a→b, hold, fall c→d
+const pulse = (e, at, dur) => { const q = (e - at) / dur; return q > 0 && q < 1 ? Math.sin(q * Math.PI) : 0; };
+const lidAt = (s, L, h = .25) => { const cx = s * X, l = clamp(L, Y - h / 2 + .03, Y + h / 2 + .05); return F(side(s), clipBelow(superE(cx, Y, .125, h, 2.4), [cx - .1, l], [cx + .1, l]), [cx, Y]); };
+const restEye = s => { const cx = s * X, y = Y - .01; return F(side(s), stroke(qb([cx - .08, y + .015], [cx, y - .07], [cx + .08, y + .015]), .05), [cx, y]); };
+const squint = s => { const cx = s * X; return F(side(s), stroke(qb([cx - .085, Y - .01], [cx, Y + .035], [cx + .085, Y - .01]), .052), [cx, Y]); };
+const chevron = s => { const cx = s * X, k = -s; return F(side(s), stroke(polyline([[cx - k * .06, Y + .075], [cx + k * .055, Y], [cx - k * .06, Y - .075]], 10), .056), [cx, Y]); };
+const shiny = s => { const cx = s * X, k = side(s); return [F(k, ell(cx, Y, .085, .115), [cx, Y]),
+  F('h' + k, ell(cx + .032, Y + .048, .03, .03), [cx + .032, Y + .048], 'hi', { bc: Y }), F('h2' + k, ell(cx - .03, Y - .04, .014, .014), [cx - .03, Y - .04], 'hi', { bc: Y })]; };
+const OPEN = [capEye(-1), capEye(1)], SQUINT = [squint(-1), squint(1)], REST = [restEye(-1), restEye(1)], SQUEEZE = [chevron(-1), chevron(1)];
+const HAPPY = [arcEye(-1), arcEye(1), ...blush()], SHINY = [...shiny(-1), ...shiny(1)], SUSPECT = [lidAt(-1, Y + .015), lidAt(1, Y + .015)];
+const DERP = [F('L', ell(-.13, Y - .035, .04, .05), [-.13, Y - .035]), F('R', superE(.14, Y + .04, .17, .3, 2.4), [.14, Y + .04])];
+const CROSSUP = [F('L', superE(-.075, Y + .045, .11, .23, 2.4), [-.075, Y + .045]), F('R', superE(.075, Y + .045, .11, .23, 2.4), [.075, Y + .045])];
+const CROSSDOWN = [F('L', superE(-.08, Y - .04, .115, .22, 2.4), [-.08, Y - .04]), F('R', superE(.08, Y - .04, .115, .22, 2.4), [.08, Y - .04])];
+const WINKL = [arcEye(-1), capEye(1), ...blush()], WINKR = [capEye(-1), arcEye(1), ...blush()];
+/* where the fly is, in ball units: buzzing loops, landing on the head, then zooming off */
+function flyAt(e) {
+  const buzz = u => [.95 * Math.sin(u * 3.1), -.55 + .45 * Math.sin(u * 5.3)], head = [.05 + .01 * Math.sin(e * 40), -1.06];
+  if (e < 2) return buzz(e);
+  if (e < 2.4) { const a = buzz(2), q = ease((e - 2) / .4); return [lerp(a[0], head[0], q), lerp(a[1], head[1], q) - .25 * Math.sin(q * Math.PI)]; }
+  if (e < 2.9) return head;
+  const q = ease(Math.min(1, (e - 2.9) / .6)); return [lerp(head[0], 1.9, q), lerp(head[1], -1.5, q)];
+}
+const THINK = [capEye(-1, .23, .125, Y + .02), lidEye(1, .23, Y + .02, [X - .1, Y + .035], [X + .1, Y + .05])];
+const SLEEPY = [-1, 1].map(s => { const cx = s * X, y = .09; return F(side(s), stroke(qb([cx - .08, y + .015], [cx, y - .08], [cx + .08, y + .015]), .05), [cx, y]); });
+const HICS = [.3, 1.3, 2.2];
+const dozeLids = q => [lidAt(-1, Y + .14 - .17 * q), lidAt(1, Y + .14 - .17 * q)];
+const em = (label, dur, weight, def) => ({ label, hidden: true, emote: { dur, weight, kicks: def.kicks || [] }, ...def });
+
+Object.assign(EX, {
+  yawn: em('Yawn', 2.9, 3, {
+    feats: (t, e) => { const f = seq(e, [[0, OPEN], [.35, SQUINT], [2.35, OPEN]]);
+      if (e > 2) { const q = (e - 2) / .9; f.push(F('tear', drop(X + .1, Y - .02 - q * .06, .026), [X + .1, Y - .02], 'tear', { op: Math.max(0, 1 - q), fixed: true })); }
+      return f; },
+    motion: (t, e) => { const m = env(e, .3, 1.2, 1.9, 2.4); return { pitch: .55 * m, yaw: 0, w: .85 * m + .1, s: 1 + .05 * m, rollAdd: .05 * Math.sin(e * 2.2) * m + .025 * Math.sin(e * 30) * env(e, 1.3, 1.5, 1.8, 1.9) }; } }),
+  shifty: em('Shifty eyes', 3, 3, {
+    feats: (t, e) => seq(e, [[0, OPEN], [.15, SUSPECT], [2.5, OPEN]]),
+    motion: (t, e) => ({ yaw: e < .8 ? -.6 : e < 1.5 ? .6 : e < 2.1 ? -.6 : 0, pitch: -.05, w: e < 2.5 ? 1 : .3 }) }),
+  sneeze: em('Sneeze', 2.6, 2, { kicks: [[1.12, 1.7]], extra: 'spray',
+    feats: (t, e) => { if (e < 1.1) return dozeLids(e / 1.1);
+      return seq(e, [[1.1, SQUEEZE], [1.55, OPEN]]); },
+    motion: (t, e) => e < 1.1 ? { pitch: .1 + .45 * e / 1.1, yaw: 0, w: .9, dy: -.05 * e / 1.1, rollAdd: .035 * Math.sin(e * 24) * e / 1.1 }
+      : e < 1.45 ? { pitch: -.5, yaw: 0, w: 1 } : { pitch: .05, w: .6, rollAdd: .1 * Math.sin((e - 1.45) * 13) * Math.exp(-(e - 1.45) * 3) } }),
+  hiccup: em('Hiccups', 3, 2, { kicks: HICS.map(h => [h, .7]), extra: 'hic',
+    feats: (t, e) => seq(e, [[0, OPEN], ...HICS.flatMap(h => [[h, SHINY], [h + .2, OPEN]])], .06),
+    motion: (t, e) => ({ dy: -HICS.reduce((a, h) => a + .1 * pulse(e, h, .22), 0), pitch: .08, w: .4 }) }),
+  whistle: em('Whistle', 3.4, 3, { extra: 'notes',
+    feats: (t, e) => seq(e, [[0, OPEN], [.25, REST], [3.1, OPEN]]),
+    motion: (t, e) => ({ rollAdd: .12 * Math.sin(e * 2.2), yaw: .15 + .12 * Math.sin(e * 1.1), pitch: .22, w: .6 }) }),
+  cheeky: em('Cheeky winks', 2.7, 3, { kicks: [[.2, .35], [.75, .35], [1.3, .35]],
+    feats: (t, e) => seq(e, [[0, OPEN], [.2, WINKL], [.75, WINKR], [1.3, WINKL], [1.85, HAPPY], [2.45, OPEN]], .1),
+    motion: (t, e) => ({ roll: e < .2 ? 0 : e < .75 ? .2 : e < 1.3 ? -.2 : e < 1.85 ? .2 : 0, pitch: .15, yaw: 0, w: .55, dy: -.05 * pulse(e, 1.85, .3) }) }),
+  vibe: em('Vibing', 3.6, 2, { extra: 'notes',
+    feats: (t, e) => seq(e, [[0, OPEN], [.2, HAPPY], [3.35, OPEN]]),
+    motion: (t, e) => { const b = e * Math.PI * 2.2; return { dy: -.06 * Math.abs(Math.sin(b)), rollAdd: .15 * Math.sin(b), yawAdd: .08 * Math.sin(b / 2), pitch: .15, w: .4 }; } }),
+  peekaboo: em('Peekaboo', 4, 2, { kicks: [[2.85, 1.2]], extra: 'boo',
+    feats: (t, e) => seq(e, [[0, OPEN], [2.75, HAPPY]]),
+    motion: (t, e) => ({ yaw: e < 1.8 ? 3.1 : e < 2.4 ? 1.3 : e < 2.7 ? 3.1 : 0, pitch: .05, w: 1, dy: -.08 * pulse(e, 2.8, .35) }) }),
+  boop: em('Boop the screen', 3.2, 2, { kicks: [[1.2, .9], [1.55, .9]], extra: 'knock',
+    feats: (t, e) => seq(e, [[0, OPEN], [.2, SHINY], [2.2, HAPPY], [3, OPEN]]),
+    motion: (t, e) => ({ s: 1 + .22 * env(e, .1, .8, 2.1, 2.9) - .03 * (pulse(e, 1.2, .12) + pulse(e, 1.55, .12)), yaw: 0, pitch: 0, w: .95 }) }),
+  derp: em('Derp', 2.6, 2, { kicks: [[1.65, .6]], extra: 'huh',
+    feats: (t, e) => seq(e, [[0, OPEN], [.2, DERP], [1.75, OPEN]]),
+    motion: (t, e) => ({ roll: e < 1.6 ? .28 : 0, pitch: -.05, yaw: 0, w: .6, rollAdd: e > 1.6 ? .22 * Math.sin((e - 1.6) * 30) * Math.exp(-(e - 1.6) * 6) : 0 }) }),
+  idea: em('Idea!', 2.9, 2, { kicks: [[1.2, 1]], extra: 'bulb',
+    feats: (t, e) => seq(e, [[0, OPEN], [.15, THINK], [1.2, SHINY], [2.6, OPEN]], .1),
+    motion: (t, e) => e < 1.2 ? { pitch: .5, yaw: -.35, w: .85, roll: -.1 } : { pitch: .15, yaw: 0, w: .6, dy: -.1 * pulse(e, 1.2, .35) } }),
+  fly: em('Fly', 3.6, 2, { kicks: [[2.9, 1]], extra: 'fly',
+    feats: (t, e) => seq(e, [[0, OPEN], [2.2, CROSSUP], [2.9, SQUEEZE], [3.25, OPEN]], .1),
+    motion: (t, e) => { const [x, y] = flyAt(e);
+      if (e > 2.2 && e < 2.9) return { yaw: 0, pitch: .9, w: 1 };
+      return { yaw: clamp(x * .75, -.8, .8), pitch: clamp(-(y + .2) * .7, -.5, .9), w: e < 2.9 ? .95 : .6,
+        rollAdd: e > 2.9 ? .25 * Math.sin((e - 2.9) * 34) * Math.exp(-(e - 2.9) * 5) : 0 }; } }),
+  bubble: em('Bubble gum', 3.2, 2, { kicks: [[1.75, 1.1]], extra: 'bubble',
+    feats: (t, e) => { const f = seq(e, [[0, OPEN], [.2, CROSSDOWN], [1.75, SHINY], [2.5, OPEN]], .08);
+      if (e > 1.75) { const o = clamp((3.1 - e) / .7, 0, 1);   // gum splats stuck on the face after the pop
+        for (const [k, x, y, r] of [['g1', -.2, -.05, .045], ['g2', .17, -.11, .035], ['g3', .02, .3, .03]]) f.push(F(k, ell(x, y, r, r * .85), [x, y], 'gum', { op: o, fixed: true })); }
+      return f; },
+    motion: (t, e) => e < 1.75 ? { pitch: -.15, yaw: 0, w: .75, rollAdd: .03 * Math.sin(e * 3) } : { pitch: .12, yaw: 0, w: .6, dy: -.1 * pulse(e, 1.75, .3) } }),
+  doze: em('Dozing off', 5, 0, { kicks: [[2.02, .8]],
+    feats: (t, e) => e < 2 ? dozeLids(e / 2) : e < 2.35 ? Object.values(prepList(OPEN)) : e < 4.2 ? dozeLids((e - 2.35) / 1.85) : Object.values(prepList(SLEEPY)),
+    motion: (t, e) => e < 2 ? { pitch: -.45 * e / 2, roll: .15 * e / 2, w: .9 } : e < 2.35 ? { pitch: .2, w: .9, dy: -.05 } : { pitch: -.42 * Math.min(1, (e - 2.35) / 1.85), roll: .2, yaw: .1, w: .92 } }),
+  wake: em('Waking up', 1.6, 0, { kicks: [[0, 1.2]], extra: 'bang',
+    feats: (t, e) => seq(e, [[0, SHINY], [1.1, OPEN]], .1),
+    motion: (t, e) => ({ dy: -.12 * pulse(e, 0, .35), yaw: e < .5 ? 0 : e < .8 ? -.5 : e < 1.1 ? .5 : 0, pitch: .1, w: .9 }) }),
+});
 
 /* ---------- floating extras: drawn on the canvas in ball units (y down, unit ball at origin) ----------
    Each takes (R, t, pal): R = { c: context, k: px per unit, W: canvas px, a: layer opacity, dy, ink: text color }. */
@@ -142,6 +238,41 @@ const BACK = {
     c.beginPath(); c.arc(0, 0, 1 + .34 * p, 0, TAU); c.stroke(); },
 };
 
+/* Emote extras. R also carries e (emote time), s and cy (ball scale and center). */
+const say = (R, str, x, y, size, alpha, color) => { if (alpha <= .01 || size <= 0) return; const c = R.c; c.save(); c.setTransform(1, 0, 0, 1, 0, 0); c.globalAlpha = R.a * alpha; c.fillStyle = color || R.ink;
+  c.font = `700 ${(size * R.k).toFixed(1)}px system-ui, sans-serif`; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(str, x * R.k + R.W / 2, (y + R.dy) * R.k + R.W / 2); c.restore(); };
+const dot = (c, x, y, r) => { c.beginPath(); c.arc(x, y, r, 0, TAU); c.fill(); };
+Object.assign(EXTRA, {
+  notes: R => { for (let i = 0; i < 3; i++) { const p = (R.e * .55 + i / 3) % 1; say(R, i % 2 ? '♫' : '♪', .5 + p * .7 + .07 * Math.sin(p * 9 + i), -.35 - p, .3 + .08 * i, Math.sin(p * Math.PI)); } },
+  spray: (R, t, pal) => { say(R, 'achoo!', 0, -1.3, .3, env(R.e, 1.1, 1.2, 1.7, 1.95));
+    const q = (R.e - 1.1) / .7; if (q <= 0 || q >= 1) return; const c = R.c; c.fillStyle = pal.tear; c.globalAlpha = R.a * (1 - q);
+    for (let i = 0; i < 9; i++) { const a = Math.PI * (.1 + .8 * i / 8), d = .35 + q * (.7 + .2 * (i % 3)); dot(c, Math.cos(a) * d * 1.3, .15 + Math.sin(a) * d * .7, .03 + .012 * (i % 2)); } },
+  hic: R => { for (const h of HICS) { const d = R.e - h; if (d > 0 && d < .6) say(R, 'hic!', .78, -.95 - d * .35, .24, 1 - d / .6); } },
+  boo: (R, t, pal) => { if (R.e < 2.75) return; const a = R.a; R.a = a * Math.min(1, (R.e - 2.75) / .2) * clamp((4 - R.e) / .4, 0, 1); EXTRA.sparkle(R, t, pal); say(R, 'boo!', 0, -1.3, .3, 1); R.a = a; },
+  knock: R => { const c = R.c; c.strokeStyle = R.ink; c.lineWidth = .04; c.lineCap = 'round';
+    for (const k of [1.2, 1.55]) { const d = (R.e - k) / .3; if (d <= 0 || d >= 1) continue; c.globalAlpha = R.a * (1 - d);
+      for (const a of [-2.3, -1.57, -.84]) { const r0 = R.s * 1.06 + d * .08, r1 = r0 + .14; c.beginPath(); c.moveTo(Math.cos(a) * r0, R.cy + Math.sin(a) * r0); c.lineTo(Math.cos(a) * r1, R.cy + Math.sin(a) * r1); c.stroke(); } } },
+  huh: R => say(R, '?', .78, -.95 + .04 * Math.sin(R.e * 6), .42, env(R.e, .25, .45, 1.5, 1.75)),
+  bulb: (R, t, pal) => { if (R.e < 1.2) return; const q = backOut(Math.min(1, (R.e - 1.2) / .3)), c = R.c, y = -1.28;
+    c.globalAlpha = R.a * clamp((2.9 - R.e) / .4, 0, 1); c.strokeStyle = pal.spark; c.lineWidth = .035; c.lineCap = 'round';
+    for (let i = 0; i < 5; i++) { const a = -Math.PI / 2 + (i - 2) * .55; c.beginPath(); c.moveTo(Math.cos(a) * .22 * q, y + Math.sin(a) * .22 * q); c.lineTo(Math.cos(a) * .29 * q, y + Math.sin(a) * .29 * q); c.stroke(); }
+    c.fillStyle = pal.spark; dot(c, 0, y, .14 * q); c.fillStyle = R.ink; c.fillRect(-.055 * q, y + .11 * q, .11 * q, .065 * q); },
+  fly: (R, t, pal) => { const [x, y] = flyAt(R.e), c = R.c, flap = .5 + .5 * Math.sin(R.e * 70); if (x > 1.75) return;
+    c.globalAlpha = R.a * .65; c.fillStyle = '#ffffff';
+    c.beginPath(); c.ellipse(x - .035, y - .04, .035, .05 * (.4 + .6 * flap), -.5, 0, TAU); c.fill();
+    c.beginPath(); c.ellipse(x + .035, y - .04, .035, .05 * (.4 + .6 * flap), .5, 0, TAU); c.fill();
+    c.globalAlpha = R.a; c.fillStyle = R.ink; dot(c, x, y, .038);
+    if (R.e > 2.95 && R.e < 3.5) say(R, 'shoo!', -.75, -1.1, .26, 1 - (R.e - 2.95) / .55); },
+  bubble: (R, t, pal) => { const c = R.c, e = R.e, ax = R.anchor[0], ay = R.anchor[1];
+    if (e > .2 && e < 1.75) { const r = .04 + .36 * ease(Math.min(1, (e - .2) / 1.5)), w = .05 * Math.sin(e * 9);
+      c.globalAlpha = R.a * .85; c.fillStyle = pal.gum; c.beginPath(); c.ellipse(ax, ay + r * .8, r * (1 + w), r * (1 - w), 0, 0, TAU); c.fill();
+      c.globalAlpha = R.a * .75; c.fillStyle = '#ffffff'; c.beginPath(); c.ellipse(ax - r * .35, ay + r * .45, r * .18, r * .1, -.6, 0, TAU); c.fill(); }
+    const q = (e - 1.75) / .35; if (q > 0 && q < 1) { c.globalAlpha = R.a * (1 - q); c.fillStyle = pal.gum;
+      for (let i = 0; i < 8; i++) { const a = i / 8 * TAU, d = .25 + q * .4; dot(c, ax + Math.cos(a) * d, ay + .3 + Math.sin(a) * d, .032); }
+      say(R, 'pop!', ax + .62, ay - .1, .26, 1 - q); } },
+  bang: R => say(R, '!', 0, -1.3, .5 * backOut(Math.min(1, R.e / .2)), env(R.e, 0, .08, .7, .9)),
+});
+
 /* ---------- morphing: resample every shape to the same point count, then blend slot by slot ---------- */
 const NPTS = 96;
 function resample(P) {
@@ -158,8 +289,8 @@ function resample(P) {
 }
 const prepCache = {};
 const isStatic = ex => ex.feats.length === 0;
-function prepOf(k, t) {
-  const ex = EX[k] || EX.idle, make = () => { const m = {}; for (const f of ex.feats(t)) m[f.key] = { ...f, pts: resample(f.pts) }; return m; };
+function prepOf(k, t, e = 0) {
+  const ex = EX[k] || EX.idle, make = () => { const m = {}; for (const f of ex.feats(t, e)) m[f.key] = { ...f, pts: resample(f.pts) }; return m; };
   return isStatic(ex) ? (prepCache[k] ||= make()) : make();
 }
 function mixFeats(A, B, p) {
@@ -268,7 +399,7 @@ function loop(ms) {
   const t0 = performance.now(), half = Q.level >= 2, act = [];
   for (const o of live) if (o._visible && !o._static && o._cw) act.push(o);
   for (const o of act) {                       // read layout first (only when it may have changed), then draw
-    if ((o._target || o._followMode() && pointer.active) && (o._rectVer !== layoutVer || frameNo % 30 === 0)) { o._rect = o.getBoundingClientRect(); o._rectVer = layoutVer; }
+    if ((o._target || (o._followMode() || o._alive) && pointer.active) && (o._rectVer !== layoutVer || frameNo % 30 === 0)) { o._rect = o.getBoundingClientRect(); o._rectVer = layoutVer; }
   }
   for (const o of act) {
     if (half && (frameNo + o._slot) & 1) { o._acc += dtRaw; continue; }
@@ -285,7 +416,7 @@ const on = v => v !== null && v !== 'false' && v !== 'off';
 const CANVAS_SCALE = 3.2 / 2.08;               // canvas spans ±1.6 ball radii; the element box spans ±1.04
 let slots = 0;
 
-const ATTRS = ['reaction', 'mode', 'color', 'eye-color', 'size', 'follow', 'shadow', 'extras', 'face-scale', 'morph', 'jelly', 'gaze', 'static', 'label'];
+const ATTRS = ['reaction', 'mode', 'color', 'eye-color', 'size', 'follow', 'shadow', 'extras', 'face-scale', 'morph', 'jelly', 'gaze', 'static', 'label', 'alive', 'idle-time', 'sleep-after', 'emotes'];
 
 class OrbAvatar extends HTMLElement {
   static get observedAttributes() { return ATTRS; }
@@ -296,6 +427,9 @@ class OrbAvatar extends HTMLElement {
   static get quality() { return Q.auto ? 'auto' : Q.level; }
   static set quality(v) { if (v === 'auto') { Q.auto = true; setLevel(0); } else { Q.auto = false; setLevel(+v || 0); } }
   static get qualityLevel() { return Q.level; }
+  static get emotes() { return Object.keys(EX).filter(k => EX[k].emote && EX[k].emote.weight > 0); }
+  /** Register an emote: a reaction definition plus { duration, weight (how often it is picked), kicks: [[time, strength]] }. */
+  static defineEmote(name, { duration = 2, weight = 1, kicks = [], ...def }) { EX[name] = { label: name, ...def, hidden: true, emote: { dur: duration, weight, kicks } }; delete prepCache[name]; }
 
   constructor() {
     super();
@@ -305,10 +439,11 @@ class OrbAvatar extends HTMLElement {
       + '<canvas part="canvas"></canvas><i></i>';
     this._canvas = root.querySelector('canvas'); this._probe = root.querySelector('i'); this._ctx = this._canvas.getContext('2d');
     this._cw = 0; this._cssW = 0; this._sig = null; this._slot = slots++; this._acc = 0; this._rectVer = -1; this._inkAt = 0; this._colorVer = 0;
-    this._expr = 'idle'; this._base = 'idle'; this._override = null; this._overrideUntil = 0; this._pokeAt = -9; this._pokes = [];
+    this._expr = 'idle'; this._base = 'idle'; this._override = null; this._overrideUntil = 0; this._pokeAt = -9; this._pokes = []; this._overrideAt = 0; this._kickIdx = 0;
+    this._alive = false; this._idleTime = 8; this._sleepAfter = 60; this._emoteList = null; this._lastAttn = this._t0 = performance.now() / 1000; this._nextEmote = 0; this._asleep = false; this._lastEmote = null; this._ptrSeen = 0;
     this._mode = 'drift'; this._wTarget = null; this._wNext = 0; this._ph = Math.random() * 20;
     this._raw = { color: '#f1efe9', eye: '#141418' };
-    this._pal = { color: '#f1efe9', eye: '#141418', hi: '#ffffff', blush: '#ff6f91', tear: '#a8dcff', spark: '#ffe08a' };
+    this._pal = { color: '#f1efe9', eye: '#141418', hi: '#ffffff', blush: '#ff6f91', tear: '#a8dcff', spark: '#ffe08a', gum: '#ff8fb8' };
     this._ink = '#888';
     this._face = 1.6; this._morph = .42; this._jelly = .6; this._gaze = null;
     this._follow = false; this._shadow = false; this._extras = true; this._static = false; this._visible = true; this._target = null;
@@ -325,7 +460,7 @@ class OrbAvatar extends HTMLElement {
   disconnectedCallback() { live.delete(this); io.unobserve(this); ro.unobserve(this); }
   attributeChangedCallback(n, _, v) {
     switch (n) {
-      case 'reaction': { const e = v && EX[v] && !EX[v].hidden ? v : 'idle', from = this._base; this._base = e; this._override = null; this._show(e);
+      case 'reaction': { const e = v && EX[v] && !EX[v].hidden ? v : 'idle', from = this._base; this._base = e; this._override = null; this._asleep = false; this._lastAttn = performance.now() / 1000; this._show(e);
         if (from !== e) this.dispatchEvent(new CustomEvent('reactionchange', { detail: { from, to: e }, bubbles: true })); break; }
       case 'mode': this._mode = ['follow', 'wander', 'fixed', 'drift'].includes(v) ? v : 'drift'; break;
       case 'color': this._raw.color = v || '#f1efe9'; this._colors(); break;
@@ -339,6 +474,10 @@ class OrbAvatar extends HTMLElement {
       case 'jelly': this._jelly = clamp(num(v, .6), 0, 1); break;
       case 'gaze': this._gaze = parseGaze(v); break;
       case 'static': this._static = on(v); break;
+      case 'alive': this._alive = on(v); this._nextEmote = performance.now() / 1000 + this._idleTime * (.5 + Math.random() * .6); this._lastAttn = performance.now() / 1000; break;
+      case 'idle-time': this._idleTime = Math.max(.5, num(v, 8)); break;
+      case 'sleep-after': this._sleepAfter = Math.max(0, num(v, 60)); break;
+      case 'emotes': this._emoteList = v ? v.split(/[\s,]+/).filter(Boolean) : null; break;
     }
     this._sig = null; this._aria();
     if (this.isConnected && (this._static || !raf)) this._update(0, performance.now() / 1000);
@@ -353,17 +492,27 @@ class OrbAvatar extends HTMLElement {
   poke(force = 1, { react = true } = {}) {
     const j = this._jelly * force, now = performance.now() / 1000;
     this._jv[0] += 3.4 * j; this._jv[2] += (Math.random() - .5) * 2.4 * j; this._jv[3] += (Math.random() - .5) * 2.4 * j;
-    if (react && !this._static) {          // escalate with rapid pokes: surprised, giggle, then dizzy
-      this._pokes = this._pokes.filter(p => now - p < 1.3); this._pokes.push(now);
-      const n = this._pokes.length, e = n >= 3 ? 'dizzy' : n === 2 ? 'giggle' : 'surprised';
-      this._pokeAt = now; this._override = e; this._overrideUntil = now + (e === 'dizzy' ? 1.9 : e === 'giggle' ? 1.2 : .95);
-      this._show(e, false);
-      this.dispatchEvent(new CustomEvent('poke', { detail: { count: n, reaction: e }, bubbles: true }));
+    this._lastAttn = now;
+    if (react && !this._static) {
+      if (this._asleep) { this._asleep = false; this._play('wake', now); }
+      else {                               // escalate with rapid pokes: surprised, giggle, then dizzy
+        this._pokes = this._pokes.filter(p => now - p < 1.3); this._pokes.push(now);
+        const n = this._pokes.length, e = n >= 3 ? 'dizzy' : n === 2 ? 'giggle' : 'surprised';
+        this._pokeAt = now; this._override = e; this._overrideAt = now; this._kickIdx = 0; this._overrideUntil = now + (e === 'dizzy' ? 1.9 : e === 'giggle' ? 1.2 : .95);
+        this._show(e, false);
+        this.dispatchEvent(new CustomEvent('poke', { detail: { count: n, reaction: e }, bubbles: true }));
+      }
     }
     wake(); return this;
   }
   spin() { this._spinAt = performance.now() / 1000; this.poke(.5, { react: false }); return this; }
   blink() { this._blinkAt = performance.now() / 1000; wake(); return this; }
+  /** Play an emote now, such as 'sneeze' or 'peekaboo'. Works in any reaction. */
+  emote(name) { if (EX[name] && EX[name].emote && !this._static) { this._asleep = false; this._play(name, performance.now() / 1000); } return this; }
+  /** Doze off and fall asleep until poked, approached or given a new reaction. */
+  sleep() { return this.emote('doze'); }
+  wakeUp() { if (this._asleep) { this._asleep = false; this._play('wake', performance.now() / 1000); } this._lastAttn = performance.now() / 1000; return this; }
+  get asleep() { return this._asleep; }
   lookAt(x, y) { this._target = (x == null || y == null) ? null : { x, y }; this._rectVer = -1; wake(); return this; }
   toSVG({ size = 512 } = {}) {
     const Fr = this._Fr || frame(.32, .26, 0);
@@ -371,6 +520,27 @@ class OrbAvatar extends HTMLElement {
   }
 
   /* internals */
+  _play(name, t) {
+    const em = EX[name].emote || {};
+    this._override = name; this._overrideAt = t; this._overrideUntil = t + (em.dur ?? 1); this._kickIdx = 0; this._lastEmote = name;
+    this._show(name, true); wake();
+    this.dispatchEvent(new CustomEvent('emote', { detail: { name }, bubbles: true }));
+  }
+  _pickEmote() {
+    const pool = Object.keys(EX).filter(k => { const em = EX[k].emote; return em && em.weight > 0 && k !== this._lastEmote && (!this._emoteList || this._emoteList.includes(k)); });
+    let r = Math.random() * pool.reduce((a, k) => a + EX[k].emote.weight, 0);
+    for (const k of pool) { r -= EX[k].emote.weight; if (r <= 0) return k; }
+    return pool[0] || null;
+  }
+  _life(t) {                            // alive mode: notice the cursor, play emotes when bored, fall asleep when ignored
+    if (pointer.active && pointer.t > this._ptrSeen && this._rect) {
+      this._ptrSeen = pointer.t; const b = this._rect;
+      if (Math.hypot(pointer.x - b.left - b.width / 2, pointer.y - b.top - b.height / 2) < Math.max(140, b.width * 2)) { this._lastAttn = t; if (this._asleep) { this._asleep = false; this._play('wake', t); } }
+    }
+    if (this._base !== 'idle' || this._override) return;
+    if (this._sleepAfter > 0 && t - this._lastAttn > this._sleepAfter) this._play('doze', t);
+    else if (t > this._nextEmote) { const k = this._pickEmote(); if (k) this._play(k, t); else this._nextEmote = t + this._idleTime; }
+  }
   _followMode() { return this._mode === 'follow' || (this._follow && this._mode === 'drift'); }
   _aria() { if (this.isConnected) this.setAttribute('aria-label', this.getAttribute('label') || OrbAvatar.reactionLabel(this._base)); }
   _colors() {                           // resolve any CSS color (including var(--x)) to something canvas understands
@@ -406,10 +576,19 @@ class OrbAvatar extends HTMLElement {
     const st = this._static, calm = RMQ.matches || st, dur = RMQ.matches ? .18 : this._morph;
     this._tp = (st || dur <= 0) ? 1 : Math.min(1, this._tp + dt / dur);
     if (!st && t > this._nextBlink) { this._blinkAt = t; this._nextBlink = t + (Math.random() < .2 ? .32 : 2.2 + Math.random() * 4); }
-    if (this._override && t > this._overrideUntil) { this._override = null; this._show(this._base, false); }
+    if (this._override && t > this._overrideUntil) {
+      const ended = this._override; this._override = null;
+      if (ended === 'doze') { this._asleep = true; this._override = 'sleeping'; this._overrideAt = t; this._overrideUntil = Infinity; this._show('sleeping', false); }
+      else { this._show(this._base, false); this._nextEmote = t + this._idleTime * (.7 + Math.random() * .9); }
+    }
+    if (this._alive && !st) this._life(t);
+    if (this._override) {                // timed jiggles inside emotes (sneezes, hiccups, knocks)
+      const kicks = (EX[this._override].emote || {}).kicks || [], e = t - this._overrideAt;
+      while (this._kickIdx < kicks.length && e >= kicks[this._kickIdx][0]) { const j = this._jelly * kicks[this._kickIdx][1]; this._jv[0] += 3 * j; this._jv[2] += (Math.random() - .5) * 2 * j; this._kickIdx++; }
+    }
     const mode = this._followMode() ? 'follow' : this._mode, fixed = mode === 'fixed' && !this._override;
     // lt drives movement (frozen for reduced motion); ft drives the face's own animation (spinning spirals, tears)
-    const ex = EX[this._expr] || EX.idle, lt = calm ? 0 : t + this._ph, ft = st ? 0 : t + this._ph, p = ease(this._tp), since = t - this._pokeAt;
+    const ex = EX[this._expr] || EX.idle, lt = calm ? 0 : t + this._ph, ft = st ? 0 : t + this._ph, p = ease(this._tp), since = this._override ? t - this._overrideAt : t - this._pokeAt; this._since = since;
     const mTo = (ex.motion && !fixed) ? ex.motion(lt, since) : {}, m = this._tp < 1 ? mixMotion(fixed ? {} : this._fromM, mTo, p) : mTo; this._m = m;
 
     let ly, lp; const g = this._gaze || [.32, .26];
@@ -430,7 +609,7 @@ class OrbAvatar extends HTMLElement {
     this._jellyStep(dt);
     const dyn = !isStatic(ex) || this._tp < 1;
     if (dyn || !this._cur || this._curExpr !== this._expr) {
-      const target = prepOf(this._expr, ft);
+      const target = prepOf(this._expr, ft, since);
       this._cur = (this._tp < 1 && this._fromSnap) ? mixFeats(this._fromSnap, target, p) : target; this._curExpr = this._expr;
     }
     this._render(this._tp < 1 ? p : 1, m, calm, dyn);
@@ -461,7 +640,7 @@ class OrbAvatar extends HTMLElement {
 
     const Fr = frame(yaw, pitch, roll), k = W / 3.2;
     c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, W, W); c.setTransform(k, 0, 0, k, W / 2, W / 2); c.globalAlpha = 1;
-    const R = { c, k, W, a: 1, dy, ink: this._ink };
+    const R = { c, k, W, a: 1, dy, ink: this._ink, e: this._since, s, cy: 1 - s, anchor: [0, 0] };
     const layer = (tbl, e, op) => { if (extras && e && e.extra && tbl[e.extra] && op > .01) { R.a = op; tbl[e.extra](R, t + this._ph, pal); c.globalAlpha = 1; } };
     layer(BACK, fx, 1 - p); layer(BACK, ex, p);
 
@@ -481,7 +660,12 @@ class OrbAvatar extends HTMLElement {
     c.fill();
     drawFace(c, Fr, this._cur, sq, pal, this._face, warp, Math.min(stride, 2));
 
-    if (extras) { c.translate(0, dy); layer(EXTRA, fx, 1 - p); layer(EXTRA, ex, p); }
+    if (extras) {
+      R.cy = warp.sh - dy;
+      const ap = proj(0, -.13 * this._face, Fr), ar = warp.x ? radius(warp.x, Math.atan2(ap[1], ap[0])) * warp.s : warp.s;
+      R.anchor = [ap[0] * ar, ap[1] * ar + warp.sh - dy];   // the spot just below the eyes
+      c.translate(0, dy); layer(EXTRA, fx, 1 - p); layer(EXTRA, ex, p);
+    }
     this._Fr = Fr;
   }
 }

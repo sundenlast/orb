@@ -13,7 +13,12 @@ export type OrbMode = 'drift' | 'follow' | 'wander' | 'fixed';
 /** Reaction shown briefly after a poke. Escalates with rapid pokes. */
 export type OrbPokeReaction = 'surprised' | 'giggle' | 'dizzy';
 
-export type OrbExtra = 'dots' | 'zzz' | 'sparkle' | 'heart' | 'sweat' | 'stars' | 'ring';
+export type OrbExtra = 'dots' | 'zzz' | 'sparkle' | 'heart' | 'sweat' | 'stars' | 'ring'
+  | 'notes' | 'spray' | 'hic' | 'boo' | 'knock' | 'huh' | 'bulb' | 'fly' | 'bubble' | 'bang';
+
+export type OrbBuiltInEmote = 'yawn' | 'shifty' | 'sneeze' | 'hiccup' | 'whistle' | 'cheeky' | 'vibe'
+  | 'peekaboo' | 'boop' | 'derp' | 'idea' | 'fly' | 'bubble' | 'doze' | 'wake';
+export type OrbEmote = OrbBuiltInEmote | (string & {});
 
 /** A point in face space: `a` to the right, `b` up, in sphere radii. */
 export type OrbPoint = [a: number, b: number];
@@ -58,10 +63,19 @@ export interface OrbReactionDef {
   /** Hide from `OrbAvatar.reactions`. */
   hidden?: boolean;
   /** Return the face. Declare no parameter for a static face (it is cached); take `t` for animated faces. */
-  feats: (t: number) => OrbFeature[];
-  /** Movement for this reaction. `t` is seconds, `sincePoke` is seconds since the last poke. */
-  motion?: ((t: number, sincePoke: number) => OrbMotion) | null;
+  feats: (t: number, e: number) => OrbFeature[];
+  /** Movement. `t` is seconds; `e` is seconds since the current poke reaction or emote started. */
+  motion?: ((t: number, e: number) => OrbMotion) | null;
   extra?: OrbExtra;
+}
+
+export interface OrbEmoteDef extends OrbReactionDef {
+  /** Seconds. */
+  duration?: number;
+  /** How often alive orbs pick it, relative to other emotes. 0 = never at random. */
+  weight?: number;
+  /** Jiggles at given times: [seconds, strength]. */
+  kicks?: [number, number][];
 }
 
 export interface OrbShapes {
@@ -91,6 +105,7 @@ export interface OrbShapes {
 
 export interface OrbReactionChangeDetail { from: OrbReaction; to: OrbReaction; }
 export interface OrbPokeDetail { count: number; reaction: OrbPokeReaction; }
+export interface OrbEmoteDetail { name: OrbEmote; }
 
 export declare class OrbAvatar extends HTMLElement {
   /** Current base reaction (pokes do not change it). */
@@ -103,12 +118,20 @@ export declare class OrbAvatar extends HTMLElement {
   blink(): this;
   /** Look at a point in client (viewport) pixels. Call with no arguments to release. */
   lookAt(x?: number, y?: number): this;
+  /** Play an emote now. */
+  emote(name: OrbEmote): this;
+  /** Doze off and sleep until poked, approached or given a new reaction. */
+  sleep(): this;
+  wakeUp(): this;
+  readonly asleep: boolean;
   /** Static SVG markup of the current face on a round body. */
   toSVG(options?: { size?: number }): string;
 
   static readonly reactions: OrbReaction[];
   static reactionLabel(name: OrbReaction): string;
   static defineReaction(name: string, def: OrbReactionDef): void;
+  static readonly emotes: OrbEmote[];
+  static defineEmote(name: string, def: OrbEmoteDef): void;
   static shapes: OrbShapes;
   /** 'auto' adapts to the device; 0 = full, 1 = lighter, 2 = lightest. */
   static quality: 'auto' | 0 | 1 | 2;
@@ -121,6 +144,7 @@ declare global {
   interface HTMLElementEventMap {
     reactionchange: CustomEvent<OrbReactionChangeDetail>;
     poke: CustomEvent<OrbPokeDetail>;
+    emote: CustomEvent<OrbEmoteDetail>;
   }
 }
 
