@@ -51,7 +51,7 @@ Pick one:
 | Method | How |
 |---|---|
 | CDN | `<script src="https://cdn.jsdelivr.net/gh/sundenlast/orb@main/orb-avatar.js"></script>` |
-| Pinned CDN (recommended for production) | Replace `@main` with a commit hash or tag, such as `@v1.0.0`. |
+| Pinned CDN (recommended for production) | Replace `@main` with a commit hash (such as `@2c50576`) or a release tag, so updates never change your page unexpectedly. |
 | Copy the file | Download [`orb-avatar.js`](orb-avatar.js) into your project and load it with a `<script>` tag. |
 | npm, from GitHub | `npm install github:sundenlast/orb`, then `import 'orb-avatar';` once in your app's entry file. The import registers the element; the class is available as `window.OrbAvatar`, and types come from `orb-avatar.d.ts`. |
 
