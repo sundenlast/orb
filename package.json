@@ -1,12 +1,15 @@
 {
   "name": "orb-avatar",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Chibi teammate avatars with faces mapped onto a sphere. A dependency-free <orb-avatar> Web Component.",
   "main": "orb-avatar.js",
   "browser": "orb-avatar.js",
+  "unpkg": "orb-avatar.min.js",
+  "jsdelivr": "orb-avatar.min.js",
   "types": "orb-avatar.d.ts",
   "files": [
     "orb-avatar.js",
+    "orb-avatar.min.js",
     "orb-avatar.d.ts",
     "svg"
   ],
