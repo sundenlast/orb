@@ -34,7 +34,8 @@ h3{font-size:15px;font-weight:600;margin:0}
 .stage{position:relative;aspect-ratio:1;max-width:100%;border-radius:28px;border:1px solid var(--line);
   background:radial-gradient(circle at 50% 50%,color-mix(in oklab,var(--orb) 15%,transparent) 0,transparent 56%),var(--panel);
   display:grid;place-items:center;overflow:hidden;transition:background .4s}
-.stage orb-avatar{width:46%;cursor:pointer;color:var(--fg)}
+#stage orb-avatar{width:46%;cursor:pointer}
+.stage{color:var(--fg)}
 .stage-hint{position:absolute;left:16px;bottom:14px;font-family:var(--mono);font-size:11px;color:var(--muted)}
 .controls{display:flex;flex-direction:column;gap:24px;min-width:0}
 .chips{display:flex;flex-wrap:wrap;gap:8px}
@@ -62,7 +63,10 @@ input[type=range]{width:100%;accent-color:var(--fg)}
 .sec-head{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:8px 24px;margin-bottom:18px}
 .sec-head p{margin:0;color:var(--muted);font-size:14px}
 .alive{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:36px;align-items:start}
-.alive-stage orb-avatar{width:40%;cursor:pointer;color:var(--fg)}
+.alive-stage orb-avatar{width:40%;cursor:pointer}
+.alive-stage{color:var(--fg)}
+.alive-stage.light{background:#f3f1f7;color:#1f1d26;border-color:#dedae6}
+.alive-stage.light .stage-hint{color:#6b6878}
 @media (max-width:780px){.alive{grid-template-columns:minmax(0,1fr)}}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(136px,1fr));gap:12px}
 .cell{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:18px 10px 10px;display:flex;flex-direction:column;align-items:center;gap:6px}
@@ -160,6 +164,10 @@ td{color:var(--soft)}
       </div>
       <div class="controls">
         <div><p class="label">Play an emote</p><div class="chips" id="emoteChips"></div></div>
+        <div><p class="label">Stage</p><div class="chips" id="stageChips" role="group" aria-label="Stage background">
+          <button class="chip" type="button" data-k="dark" aria-pressed="true">Dark</button>
+          <button class="chip" type="button" data-k="light" aria-pressed="false">Light</button>
+        </div></div>
         <div class="actions">
           <button class="btn" id="sleepBtn" type="button">Fall asleep</button>
           <button class="btn" id="petPoke" type="button">Poke</button>
@@ -232,6 +240,9 @@ orb.addEventListener('poke', e =&gt;
             <tr><td><code>face-scale</code></td><td><code>1.6</code></td><td>Size of the face on the sphere.</td></tr>
             <tr><td><code>morph</code></td><td><code>0.42</code></td><td>Seconds for one reaction to morph into the next. <code>0</code> switches instantly.</td></tr>
             <tr><td><code>shadow</code></td><td>off</td><td>Floor shadow that shrinks as the orb hops.</td></tr>
+            <tr><td><code>particle-color</code></td><td>text color</td><td>Floating text and particles: zzz, music notes, thinking dots, "hic!", "?", the fly and more. Defaults to the CSS <code>color</code> around the orb, so it adapts to light and dark pages. Also settable as <code>--orb-particle-color</code>.</td></tr>
+            <tr><td><code>spark-color</code></td><td><code>#ffe08a</code></td><td>Sparkles, dizzy stars and the lightbulb. Also <code>--orb-spark-color</code>.</td></tr>
+            <tr><td><code>tear-color</code></td><td><code>#a8dcff</code></td><td>Tears, sweat drops and sneeze spray. Also <code>--orb-tear-color</code>.</td></tr>
             <tr><td><code>extras</code></td><td>on</td><td>Sparkles, zzz, hearts, sweat and the attention ring. Set <code>extras="off"</code> for dense lists. They use the text <code>color</code> around the orb.</td></tr>
             <tr><td><code>static</code></td><td>off</td><td>Draw one frame and stop animating. Use it for long lists, thumbnails and exports.</td></tr>
             <tr><td><code>label</code></td><td>reaction name</td><td>Accessible name for screen readers.</td></tr>
@@ -371,6 +382,10 @@ pet.addEventListener('emote', e => { clearTimeout(statusT); const n = e.detail.n
 pet.addEventListener('click', () => pet.poke());
 $('petPoke').addEventListener('click', () => pet.poke());
 $('sleepBtn').addEventListener('click', () => pet.sleep());
+document.querySelectorAll('#stageChips .chip').forEach(b => b.addEventListener('click', () => {   // particles follow the stage's text color
+  $('aliveStage').classList.toggle('light', b.dataset.k==='light');
+  document.querySelectorAll('#stageChips .chip').forEach(x => x.setAttribute('aria-pressed', x===b));
+}));
 
 /* sidebar crew */
 const CREW = [

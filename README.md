@@ -166,6 +166,9 @@ Some reactions also steer the gaze (for example, `thinking` looks up and to the 
 | `face-scale` | `1.6` | Size of the face on the sphere. |
 | `morph` | `0.42` | Seconds for one reaction to morph into the next. `0` switches instantly. |
 | `shadow` | off | Draws a soft floor shadow that shrinks as the orb hops. Boolean. |
+| `particle-color` | text color | Floating text and particles. See [Particle colors](#particle-colors). |
+| `spark-color` | `#ffe08a` | Sparkles, dizzy stars and the lightbulb. |
+| `tear-color` | `#a8dcff` | Tears, sweat drops and sneeze spray. |
 | `extras` | on | Floating sparkles, zzz, hearts, sweat drops and the pulse ring. Set `extras="off"` for dense lists. |
 | `static` | off | Draws one frame and stops animating. Use for long lists, thumbnails and exports. Boolean. |
 | `label` | reaction name | Accessible name announced by screen readers. |
@@ -238,12 +241,48 @@ orb.addEventListener('poke', e => {
 
 - Size the orb with the `size` attribute or with CSS `width` (height follows; it's always square).
 - The element box is the ball itself. Hops, shadows and extras draw outside that box without affecting layout, so leave a little room around orbs that bounce.
-- Extras that are text-like (thinking dots and zzz) use the surrounding CSS `color`, so they match your theme. Set `color` on the element or a parent to change them.
+- Floating particles are colored separately from the orb so they stay visible on any background. See [Particle colors](#particle-colors).
 - Orbs are drawn on a `<canvas>` exposed as `::part(canvas)`, if you need to add a filter or drop shadow:
 
 ```css
 orb-avatar::part(canvas) { filter: drop-shadow(0 4px 10px rgb(0 0 0 / .25)); }
 ```
+
+### Particle colors
+
+Some reactions and emotes draw things around the orb: zzz, music notes, thinking dots, "hic!", "?", "!", a fly, sparkles, stars, tears and drops. They draw on your page's background, not on the orb, so they need to contrast with the page.
+
+| Attribute | CSS custom property | Default | Colors |
+|---|---|---|---|
+| `particle-color` | `--orb-particle-color` | The surrounding CSS `color` | zzz, music notes, thinking dots, "hic!", "achoo!", "pop!", "?", "!", the fly, knock lines, the lightbulb base |
+| `spark-color` | `--orb-spark-color` | `#ffe08a` | Sparkles, dizzy stars, the lightbulb glow |
+| `tear-color` | `--orb-tear-color` | `#a8dcff` | Tears, sweat drops, sneeze spray |
+
+The default `particle-color` follows the text color around the orb, so on a page with dark text on a light background the particles are dark, and on a dark page they are light. Most pages need no setup at all.
+
+The attribute wins over the custom property. Custom properties are inherited, so you can theme every orb in an app from one stylesheet, including dark mode:
+
+```css
+:root {
+  --orb-particle-color: #1f1d26;
+  --orb-spark-color: #f5a524;     /* deeper yellow reads better on white */
+  --orb-tear-color: #4a9fe0;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --orb-particle-color: #ecebf1;
+    --orb-spark-color: #ffe08a;
+    --orb-tear-color: #a8dcff;
+  }
+}
+```
+
+```html
+<!-- or per orb -->
+<orb-avatar alive particle-color="#6e5cf2" spark-color="gold"></orb-avatar>
+```
+
+Values can be any CSS color, including `var(--your-token)`. Orbs pick up changes to the attributes immediately, re-read custom properties whenever they change face and every couple of seconds while particles are showing, and update right away when the system switches between light and dark.
 
 ## Using it with frameworks
 
@@ -282,6 +321,7 @@ declare module 'react' {
       'orb-avatar': React.DetailedHTMLProps<React.HTMLAttributes<OrbAvatar>, OrbAvatar> & {
         reaction?: string; mode?: string; gaze?: string; color?: string; size?: string | number;
         jelly?: string | number; shadow?: boolean; static?: boolean; extras?: string;
+        alive?: boolean; 'particle-color'?: string; 'spark-color'?: string; 'tear-color'?: string;
       };
     }
   }
