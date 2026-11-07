@@ -17,6 +17,7 @@
 html,body{background:var(--bg);color:var(--fg)}
 body{font-family:var(--body);font-size:15px;line-height:1.55}
 *{box-sizing:border-box}
+[hidden]{display:none!important}
 button,input{font:inherit;color:inherit}
 :focus-visible{outline:2px solid var(--focus);outline-offset:2px}
 
@@ -169,8 +170,8 @@ td{color:var(--soft)}
     <div class="sec-head"><h2>Use it in your system</h2><p>One file, no dependencies. Works in plain HTML, React, Vue or Svelte.</p></div>
     <div class="docs">
       <div class="block">
-        <h3>1. Include the script once (or copy <code>orb-avatar.js</code> into your project)</h3>
-<pre class="code">&lt;script src="https://cdn.jsdelivr.net/gh/sundenlast/orb@main/orb-avatar.js"&gt;&lt;/script&gt;</pre>
+        <h3>1. Include the script once (or copy <code>orb-avatar.min.js</code> into your project)</h3>
+<pre class="code">&lt;script src="https://cdn.jsdelivr.net/gh/sundenlast/orb@main/orb-avatar.min.js"&gt;&lt;/script&gt;</pre>
         <h3>2. Drop in avatars</h3>
 <pre class="code">&lt;orb-avatar reaction="working" color="#4fc9a8"
             size="40" mode="wander"&gt;&lt;/orb-avatar&gt;
@@ -242,7 +243,7 @@ orb.react('smug');</pre>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <textarea class="fallback" id="fallback" hidden readonly aria-label="Copied text"></textarea>
 
-<script src="orb-avatar.js"></script>
+<script src="orb-avatar.min.js"></script>
 <script>
 (() => {
 const $ = id => document.getElementById(id);

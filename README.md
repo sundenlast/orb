@@ -38,7 +38,7 @@ Chibi teammate avatars with faces painted onto a real sphere.
 Paste this into any HTML page:
 
 ```html
-<script src="https://cdn.jsdelivr.net/gh/sundenlast/orb@main/orb-avatar.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/sundenlast/orb@main/orb-avatar.min.js"></script>
 
 <orb-avatar reaction="happy" color="#4fc9a8" mode="follow"></orb-avatar>
 ```
@@ -51,9 +51,9 @@ Pick one:
 
 | Method | How |
 |---|---|
-| CDN | `<script src="https://cdn.jsdelivr.net/gh/sundenlast/orb@main/orb-avatar.js"></script>` |
+| CDN | `<script src="https://cdn.jsdelivr.net/gh/sundenlast/orb@main/orb-avatar.min.js"></script>` (about 9.6 KB gzipped) |
 | Pinned CDN (recommended for production) | Replace `@main` with a commit hash (such as `@2c50576`) or a release tag, so updates never change your page unexpectedly. |
-| Copy the file | Download [`orb-avatar.js`](orb-avatar.js) into your project and load it with a `<script>` tag. |
+| Copy the file | Download [`orb-avatar.min.js`](orb-avatar.min.js) (or the readable [`orb-avatar.js`](orb-avatar.js)) into your project and load it with a `<script>` tag. |
 | npm, from GitHub | `npm install github:sundenlast/orb`, then `import 'orb-avatar';` once in your app's entry file. The import registers the element; the class is available as `window.OrbAvatar`, and types come from `orb-avatar.d.ts`. |
 
 The script registers the `<orb-avatar>` element as soon as it loads. Load it once per page; loading it again is harmless.
@@ -167,6 +167,8 @@ Static members:
 | `OrbAvatar.reactionLabel(name)` | Human-readable label, such as `"Needs you"`. |
 | `OrbAvatar.defineReaction(name, def)` | Register a custom reaction. See [Custom reactions](#custom-reactions). |
 | `OrbAvatar.shapes` | Shape helpers for building faces. |
+| `OrbAvatar.quality` | `'auto'` (default) adapts detail to the device. Set `0` (full), `1` or `2` (lightest) to force a level. |
+| `OrbAvatar.qualityLevel` | The level currently in use, `0` to `2`. |
 
 `OrbAvatar` is also available as `window.OrbAvatar`.
 
@@ -190,10 +192,10 @@ orb.addEventListener('poke', e => {
 - Size the orb with the `size` attribute or with CSS `width` (height follows; it's always square).
 - The element box is the ball itself. Hops, shadows and extras draw outside that box without affecting layout, so leave a little room around orbs that bounce.
 - Extras that are text-like (thinking dots and zzz) use the surrounding CSS `color`, so they match your theme. Set `color` on the element or a parent to change them.
-- The internal SVG is exposed as `::part(svg)` and the body path as `::part(body)` if you need to add a filter or drop shadow:
+- Orbs are drawn on a `<canvas>` exposed as `::part(canvas)`, if you need to add a filter or drop shadow:
 
 ```css
-orb-avatar::part(svg) { filter: drop-shadow(0 4px 10px rgb(0 0 0 / .25)); }
+orb-avatar::part(canvas) { filter: drop-shadow(0 4px 10px rgb(0 0 0 / .25)); }
 ```
 
 ## Using it with frameworks
@@ -343,9 +345,24 @@ To export any other combination, open the [playground](https://sundenlast.github
 ## Accessibility and performance
 
 - Each orb is announced as an image. Its accessible name is the `label` attribute, or the reaction name if you don't set one.
-- With the operating system's reduce-motion setting on, hops, sways and shakes inside reactions are turned off and morphs are shortened. Look modes and the poke jiggle stay on because they are small and author-chosen. Use `static` or `mode="fixed"` to remove motion completely.
-- All orbs on a page share one animation loop. Orbs scrolled off screen pause automatically.
-- For long lists (dozens of orbs), use `static` and `extras="off"`, and animate only the ones that matter.
+- With the operating system's reduce-motion setting on, hops, sways and shakes inside reactions are turned off and morphs are shortened. Look modes, the poke jiggle and small face animations (spinning dizzy spirals, a falling tear) stay on because they are small and author-chosen. Use `static` or `mode="fixed"` to remove movement.
+
+**Built to run on slow devices:**
+
+- Orbs draw on `<canvas>`, so animating them never touches the page's DOM, styles or layout.
+- An orb that isn't changing isn't redrawn. A still orb in `fixed` mode costs nothing between blinks.
+- All orbs share one animation loop. Orbs scrolled off screen pause, and positions are read only after a scroll or resize, not every frame.
+- A quality governor watches frame times. On a struggling device it lowers canvas resolution, then outline detail, then animates at half rate, and steps back up when there is headroom. Small orbs (under 48 px) always use lighter outlines.
+- The math allocates no memory per point, so there are no garbage-collection pauses mid-animation.
+
+Measured on the demo page with 19 orbs animating, in Chrome with the CPU slowed 6× to approximate a budget phone:
+
+| Version | Normal CPU | CPU slowed 6× |
+|---|---|---|
+| 1.0 (SVG) | 60 fps, main thread 59% busy | 16 fps, 100% busy |
+| 1.1 (canvas) | 60 fps, main thread 16% busy | 58 fps, 68% busy |
+
+For long lists (dozens of orbs), use `static` and `extras="off"`, and animate only the ones that matter.
 
 ## How it works
 
@@ -361,16 +378,19 @@ screen  (x, y) = center + radius · (d.x, d.y)           hidden when d.z < 0
 
 **The jiggle.** The body outline is `r(θ) = 1 + Σ aₖ cos kθ + bₖ sin kθ` for k = 2, 3, 4, with each term on a damped spring that rests at zero. Only pokes and reaction changes kick the springs, so the orb is a perfect circle the rest of the time. The face is warped by the same outline while it jiggles.
 
+**Drawing.** Each orb owns a canvas slightly larger than its element box, so hops, shadows and extras can overflow without affecting layout. `toSVG()` builds SVG markup from the same geometry for exports.
+
 **Looking.** Yaw, pitch and roll follow their targets through springs tuned for a slight overshoot, so turns feel alive rather than mechanical.
 
 ## Browser support
 
-Any browser with Custom Elements and Shadow DOM: current Chrome, Edge, Firefox and Safari (including iOS). No build step, no polyfills, no dependencies.
+Any browser with Custom Elements, Shadow DOM and `ResizeObserver`: current Chrome, Edge, Firefox and Safari (including iOS). No polyfills, no dependencies.
 
 ## Project layout
 
 ```
-orb-avatar.js     The component. This is the only file you need.
+orb-avatar.js     The component, readable source.
+orb-avatar.min.js The same component, minified. This is the only file you need.
 orb-avatar.d.ts   TypeScript types.
 index.html        Demo and playground (served by GitHub Pages).
 svg/              Ready-made SVG assets.
@@ -378,7 +398,11 @@ package.json      Lets you install from GitHub with npm.
 LICENSE           MIT license.
 ```
 
-To work on the component, open `index.html` in a browser; there is nothing to build.
+To work on the component, edit `orb-avatar.js` and open `index.html` in a browser. Regenerate the minified file before committing:
+
+```bash
+npx terser orb-avatar.js -c passes=2 -m --comments '/^!/' -o orb-avatar.min.js
+```
 
 ## License
 
