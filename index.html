@@ -1,0 +1,368 @@
+<title>Orb Crew</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Onest:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one dark studio surface. Playground on top, reaction sheet, chat-sidebar mock, then component docs. */
+:root{
+  color-scheme:dark;
+  --bg:#111115; --panel:#18181d; --panel-2:#212129; --line:#2b2b35;
+  --fg:#ecebf1; --muted:#908e9d; --soft:#c9c7d3; --focus:#a9bfff; --alert:#ef4444;
+  --orb:#f1efe9;
+  --display:'Bricolage Grotesque',ui-rounded,system-ui,sans-serif;
+  --body:'Onest',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --mono:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+html,body{background:var(--bg);color:var(--fg)}
+body{font-family:var(--body);font-size:15px;line-height:1.55}
+*{box-sizing:border-box}
+button,input{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+
+.wrap{max-width:1080px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:40px 72px;display:flex;flex-direction:column;gap:64px}
+h1{font-family:var(--display);font-weight:700;font-size:clamp(2.1rem,5vw,3.1rem);letter-spacing:-.025em;line-height:1.02;margin:0;text-wrap:balance}
+h2{font-family:var(--display);font-weight:700;font-size:1.3rem;letter-spacing:-.01em;margin:0;text-wrap:balance}
+h3{font-size:15px;font-weight:600;margin:0}
+.top p{color:var(--muted);max-width:62ch;margin:.7rem 0 0}
+.top a{color:var(--fg)}
+.label{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0 0 10px}
+
+/* Playground */
+.hero{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:36px;align-items:start}
+.stage{position:relative;aspect-ratio:1;max-width:100%;border-radius:28px;border:1px solid var(--line);
+  background:radial-gradient(circle at 50% 50%,color-mix(in oklab,var(--orb) 15%,transparent) 0,transparent 56%),var(--panel);
+  display:grid;place-items:center;overflow:hidden;transition:background .4s}
+.stage orb-avatar{width:46%;cursor:pointer;color:var(--fg)}
+.stage-hint{position:absolute;left:16px;bottom:14px;font-family:var(--mono);font-size:11px;color:var(--muted)}
+.controls{display:flex;flex-direction:column;gap:24px;min-width:0}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{border:1px solid var(--line);background:var(--panel);padding:7px 13px;border-radius:999px;cursor:pointer;font-size:14px;transition:background .15s,color .15s}
+.chip:hover{background:var(--panel-2)}
+.chip[aria-pressed="true"]{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+.swatches{display:flex;flex-wrap:wrap;gap:10px}
+.sw{width:32px;height:32px;border-radius:50%;border:0;background:var(--c);cursor:pointer}
+.sw[aria-pressed="true"]{box-shadow:0 0 0 3px var(--bg),0 0 0 5px var(--fg)}
+.sliders{display:grid;gap:12px}
+.slider{display:grid;grid-template-columns:118px minmax(0,1fr) 48px;align-items:center;gap:12px;font-size:14px}
+.slider output{font-family:var(--mono);font-size:12px;color:var(--muted);text-align:right;font-variant-numeric:tabular-nums}
+input[type=range]{width:100%;accent-color:var(--fg)}
+.actions{display:flex;flex-wrap:wrap;gap:10px}
+.btn{border:1px solid var(--line);background:var(--panel-2);padding:9px 15px;border-radius:12px;cursor:pointer;font-weight:500;font-size:14px}
+.btn:hover{border-color:var(--muted)}
+.btn[aria-pressed="false"]{color:var(--muted)}
+.note{color:var(--muted);font-size:14px;margin:10px 0 0}
+.gaze{margin-top:14px}
+.snippet{display:flex;flex-direction:column;gap:6px;align-items:flex-end}
+.snippet .code{white-space:pre-wrap;word-break:break-word;width:100%}
+.code{font-family:var(--mono);font-size:12.5px;line-height:1.7;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px 16px;overflow-x:auto;color:var(--soft);margin:0;white-space:pre}
+
+/* Reaction sheet */
+.sec-head{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:8px 24px;margin-bottom:18px}
+.sec-head p{margin:0;color:var(--muted);font-size:14px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(136px,1fr));gap:12px}
+.cell{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:18px 10px 10px;display:flex;flex-direction:column;align-items:center;gap:6px}
+.cell-main{background:none;border:0;padding:0;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:12px;width:100%;border-radius:12px;color:var(--fg)}
+.cell-name{font-weight:600;font-size:14px}
+.mini{background:none;border:0;cursor:pointer;font-family:var(--mono);font-size:11px;color:var(--muted);padding:4px 7px;border-radius:6px}
+.mini:hover{color:var(--fg)}
+
+/* Sidebar mock */
+.split{display:grid;grid-template-columns:minmax(0,380px) minmax(0,1fr);gap:40px;align-items:start}
+.sidebar{background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:8px;display:flex;flex-direction:column;gap:2px}
+.row{display:flex;gap:12px;align-items:center;padding:10px 12px;border-radius:13px;color:var(--fg)}
+.row.sel{background:var(--panel-2)}
+.av{position:relative;flex:none;line-height:0}
+.dot{position:absolute;top:-2px;right:-3px;width:12px;height:12px;border-radius:50%;background:var(--alert);border:2px solid var(--panel)}
+.row.sel .dot{border-color:var(--panel-2)}
+.meta{min-width:0;flex:1}
+.l1{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.l1 b{font-weight:600}
+.l1 time{font-family:var(--mono);font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}
+.st{color:var(--muted);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:opacity .2s}
+.prose{display:flex;flex-direction:column;gap:14px;max-width:62ch}
+.prose p{margin:0;color:var(--soft)}
+code{font-family:var(--mono);font-size:12.5px;background:var(--panel);border:1px solid var(--line);padding:1px 6px;border-radius:6px}
+
+/* Docs */
+.docs{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:28px 40px}
+.docs .full{grid-column:1/-1}
+.docs .block{display:flex;flex-direction:column;gap:10px;min-width:0}
+.table-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:14px}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{text-align:left;padding:10px 14px;border-bottom:1px solid var(--line);vertical-align:top}
+tr:last-child td{border-bottom:0}
+th{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:500;background:var(--panel)}
+td:first-child code,td:nth-child(2) code{white-space:nowrap}
+td{color:var(--soft)}
+
+.toast{position:fixed;left:50%;bottom:calc(22px + env(safe-area-inset-bottom,0px));transform:translate(-50%,8px);background:var(--fg);color:var(--bg);padding:9px 16px;border-radius:999px;font-weight:500;font-size:14px;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+.fallback{position:fixed;left:max(16px,env(safe-area-inset-left,0px));right:max(16px,env(safe-area-inset-right,0px));bottom:calc(70px + env(safe-area-inset-bottom,0px));height:120px;background:var(--panel);color:var(--fg);border:1px solid var(--line);border-radius:12px;font-family:var(--mono);font-size:11px;padding:10px}
+
+@media (max-width:780px){
+  .hero,.split,.docs{grid-template-columns:minmax(0,1fr)}
+  .stage{max-width:440px;width:100%;justify-self:center}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<main class="wrap">
+  <header class="top">
+    <h1>Orb Crew</h1>
+    <p>Teammate avatars with faces painted onto a real sphere. Every orb on this page is the same <code>&lt;orb-avatar&gt;</code> component: some follow your cursor, some glance around on their own, and the big one reacts when you poke it. Copy the markup straight into your system. Source and docs on <a href="https://github.com/sundenlast/orb">GitHub</a>.</p>
+  </header>
+
+  <section class="hero" aria-label="Playground">
+    <div class="stage" id="stage">
+      <orb-avatar id="hero" mode="follow" shadow label="Playground orb"></orb-avatar>
+      <span class="stage-hint">Tap the orb to poke it. Tap fast for more.</span>
+    </div>
+    <div class="controls">
+      <div><p class="label">Reaction</p><div class="chips" id="chips"></div></div>
+      <div><p class="label">Color</p><div class="swatches" id="swatches"></div></div>
+      <div><p class="label">Mode</p><div class="chips" id="modes" role="group" aria-label="Mode"></div>
+        <div class="sliders gaze" id="gazeBox" hidden>
+          <label class="slider" for="yaw">Look sideways <input type="range" id="yaw" min="-60" max="60" step="1" value="18"><output id="yawOut">18°</output></label>
+          <label class="slider" for="pitch">Look up <input type="range" id="pitch" min="-45" max="45" step="1" value="15"><output id="pitchOut">15°</output></label>
+        </div>
+        <p class="note" id="modeNote"></p>
+      </div>
+      <div><p class="label">Feel</p>
+        <div class="sliders">
+          <label class="slider" for="jelly">Jiggle <input type="range" id="jelly" min="0" max="1" step="0.05" value="0.6"><output id="jellyOut">0.60</output></label>
+          <label class="slider" for="face">Face size <input type="range" id="face" min="1.2" max="2" step="0.05" value="1.6"><output id="faceOut">1.60</output></label>
+          <label class="slider" for="morph">Morph <input type="range" id="morph" min="0" max="0.9" step="0.02" value="0.42"><output id="morphOut">0.42s</output></label>
+        </div>
+      </div>
+      <div class="actions">
+        <button class="btn" id="pokeBtn" type="button">Poke</button>
+        <button class="btn" id="spinBtn" type="button">Spin 360°</button>
+        <button class="btn" id="copyBtn" type="button">Copy SVG</button>
+      </div>
+      <div class="snippet">
+        <pre class="code" id="snippet"></pre>
+        <button class="mini" id="copySnippet" type="button">Copy markup</button>
+      </div>
+    </div>
+  </section>
+
+  <section aria-label="Reactions">
+    <div class="sec-head"><h2>Reactions</h2><p>Click an orb to load it in the playground.</p></div>
+    <div class="grid" id="grid"></div>
+  </section>
+
+  <section class="split">
+    <div>
+      <p class="label">In a chat sidebar</p>
+      <div class="sidebar" id="crew"></div>
+    </div>
+    <div class="prose">
+      <h2>How it moves</h2>
+      <p>The face is flat shapes wrapped onto a sphere and projected every frame, so the eyes foreshorten as the orb turns and slip out of sight past the edge.</p>
+      <p>The ball stays a perfect circle while it moves. It only jiggles for a moment when you poke it or when it changes reaction, and the face jiggles with it. Pokes also get a reaction of their own: one poke surprises it, a second makes it giggle, and a quick third leaves it dizzy before it goes back to what it was doing.</p>
+      <p>Switching reactions morphs each eye point by point over the <code>morph</code> duration, while shine, blush and tears pop in or shrink away.</p>
+    </div>
+  </section>
+
+  <section aria-label="Use the component">
+    <div class="sec-head"><h2>Use it in your system</h2><p>One file, no dependencies. Works in plain HTML, React, Vue or Svelte.</p></div>
+    <div class="docs">
+      <div class="block">
+        <h3>1. Include the script once (or copy <code>orb-avatar.js</code> into your project)</h3>
+<pre class="code">&lt;script src="https://cdn.jsdelivr.net/gh/sundenlast/orb@main/orb-avatar.js"&gt;&lt;/script&gt;</pre>
+        <h3>2. Drop in avatars</h3>
+<pre class="code">&lt;orb-avatar reaction="working" color="#4fc9a8"
+            size="40" mode="wander"&gt;&lt;/orb-avatar&gt;
+
+&lt;orb-avatar reaction="needs" color="var(--brand)"
+            mode="fixed" gaze="-20 10"&gt;&lt;/orb-avatar&gt;</pre>
+      </div>
+      <div class="block">
+        <h3>3. Drive it from your app</h3>
+<pre class="code">const orb = document.querySelector('orb-avatar');
+
+orb.react('thinking');        // morphs to a reaction
+orb.mode = 'wander';          // drift | follow | wander | fixed
+orb.poke();                   // jiggle + poke reaction
+orb.spin();                   // 360° turn
+orb.lookAt(x, y);             // look at a point (client px)
+orb.lookAt();                 // back to cursor / idle drift
+const svg = orb.toSVG({ size: 256 });
+
+orb.addEventListener('reactionchange', e =&gt;
+  console.log(e.detail.from, '→', e.detail.to));
+orb.addEventListener('poke', e =&gt;
+  console.log(e.detail.count, e.detail.reaction));</pre>
+      </div>
+      <div class="block full">
+        <h3>Attributes</h3>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Attribute</th><th>Default</th><th>What it does</th></tr></thead>
+          <tbody>
+            <tr><td><code>reaction</code></td><td><code>idle</code></td><td>One of <span id="reactionList"></span>, or a name you registered.</td></tr>
+            <tr><td><code>color</code></td><td><code>#f1efe9</code></td><td>Body color. Any CSS color, including <code>var(--token)</code>.</td></tr>
+            <tr><td><code>eye-color</code></td><td><code>#141418</code></td><td>Eyes and closed lids.</td></tr>
+            <tr><td><code>size</code></td><td><code>64</code></td><td>Ball diameter in px, or any CSS length. Setting <code>width</code> in CSS also works.</td></tr>
+            <tr><td><code>mode</code></td><td><code>drift</code></td><td><code>drift</code> sways gently. <code>follow</code> looks at the cursor. <code>wander</code> glances at random spots on its own and ignores the cursor. <code>fixed</code> holds still and looks at <code>gaze</code>.</td></tr>
+            <tr><td><code>gaze</code></td><td><code>18 15</code></td><td>Where the orb looks, as <code>"yaw pitch"</code> in degrees. Positive yaw is right, positive pitch is up. <code>fixed</code> locks to it; <code>drift</code> and <code>wander</code> use it as home.</td></tr>
+            <tr><td><code>jelly</code></td><td><code>0.6</code></td><td>How much the ball jiggles when poked or changing reaction, from 0 (none) to 1 (a lot). It never jiggles otherwise.</td></tr>
+            <tr><td><code>face-scale</code></td><td><code>1.6</code></td><td>Size of the face on the sphere.</td></tr>
+            <tr><td><code>morph</code></td><td><code>0.42</code></td><td>Seconds for one reaction to morph into the next. <code>0</code> switches instantly.</td></tr>
+            <tr><td><code>shadow</code></td><td>off</td><td>Floor shadow that shrinks as the orb hops.</td></tr>
+            <tr><td><code>extras</code></td><td>on</td><td>Sparkles, zzz, hearts, sweat and the attention ring. Set <code>extras="off"</code> for dense lists. They use the text <code>color</code> around the orb.</td></tr>
+            <tr><td><code>static</code></td><td>off</td><td>Draw one frame and stop animating. Use it for long lists, thumbnails and exports.</td></tr>
+            <tr><td><code>label</code></td><td>reaction name</td><td>Accessible name for screen readers.</td></tr>
+          </tbody>
+        </table></div>
+      </div>
+      <div class="block">
+        <h3>Add your own reaction</h3>
+<pre class="code">const { capEye, arcEye, blush } = OrbAvatar.shapes;
+
+OrbAvatar.defineReaction('smug', {
+  label: 'Smug',
+  feats: () =&gt; [arcEye(-1), capEye(1, .14), ...blush()],
+  motion: t =&gt; ({ roll: .15, pitch: .2, w: .5 }),
+});
+
+orb.react('smug');</pre>
+      </div>
+      <div class="block">
+        <h3>Notes</h3>
+        <div class="prose">
+          <p>Shapes go in named slots (<code>L</code>, <code>R</code>, <code>hL</code>, <code>bL</code>, <code>tear</code>…), which is how any reaction morphs into any other.</p>
+          <p>Off-screen orbs pause automatically, and all orbs share one animation loop. Reduced-motion users get the angle and expression without bouncing or drifting.</p>
+          <p>In React, render <code>&lt;orb-avatar reaction={state} /&gt;</code> and call methods through a ref.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<textarea class="fallback" id="fallback" hidden readonly aria-label="Copied text"></textarea>
+
+<script src="orb-avatar.js"></script>
+<script>
+(() => {
+const $ = id => document.getElementById(id);
+const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const COLORS = { bone:['Bone','#f1efe9'], mint:['Mint','#4fc9a8'], tangerine:['Tangerine','#f7a335'], iris:['Iris','#6e5cf2'],
+  grape:['Grape','#9b63f7'], azure:['Azure','#3d86f7'], ember:['Ember','#f2672b'] };
+const hero = $('hero');
+
+/* reaction chips */
+const chipsEl = $('chips');
+for (const k of OrbAvatar.reactions){
+  const b = document.createElement('button'); b.type='button'; b.className='chip'; b.id='chip-'+k; b.dataset.k=k;
+  b.textContent = OrbAvatar.reactionLabel(k); b.setAttribute('aria-pressed', k==='idle');
+  b.addEventListener('click', () => hero.react(k)); chipsEl.appendChild(b);
+}
+$('reactionList').innerHTML = OrbAvatar.reactions.map(k => `<code>${k}</code>`).join(', ');
+hero.addEventListener('reactionchange', e => {
+  chipsEl.querySelectorAll('.chip').forEach(c => c.setAttribute('aria-pressed', c.dataset.k===e.detail.to));
+  snippet();
+});
+
+/* colors */
+const swEl = $('swatches'), gridOrbs = [];
+let color = 'bone';
+for (const [k,[name,hex]] of Object.entries(COLORS)){
+  const b = document.createElement('button'); b.type='button'; b.className='sw'; b.id='sw-'+k; b.dataset.k=k;
+  b.style.setProperty('--c', hex); b.setAttribute('aria-label', name); b.title=name; b.setAttribute('aria-pressed', k===color);
+  b.addEventListener('click', () => setColor(k)); swEl.appendChild(b);
+}
+function setColor(k){
+  color = k; const hex = COLORS[k][1];
+  hero.setAttribute('color', hex); gridOrbs.forEach(o => o.setAttribute('color', hex));
+  document.documentElement.style.setProperty('--orb', hex);
+  swEl.querySelectorAll('.sw').forEach(s => s.setAttribute('aria-pressed', s.dataset.k===k));
+  snippet();
+}
+
+/* modes */
+const MODES = { drift:['Drift','Sways gently around where it is looking.'], follow:['Follow','Turns to look at your cursor.'],
+  wander:['Wander','Glances at random spots on its own and ignores the cursor.'], fixed:['Fixed','Holds still and looks where you aim it.'] };
+const modesEl = $('modes');
+for (const [k,[name]] of Object.entries(MODES)){
+  const b = document.createElement('button'); b.type='button'; b.className='chip'; b.id='mode-'+k; b.dataset.k=k; b.textContent=name;
+  b.addEventListener('click', () => setMode(k)); modesEl.appendChild(b);
+}
+function setMode(k){
+  hero.mode = k;
+  modesEl.querySelectorAll('.chip').forEach(c => c.setAttribute('aria-pressed', c.dataset.k===k));
+  $('gazeBox').hidden = k!=='fixed'; $('modeNote').textContent = MODES[k][1];
+  if (k==='fixed') setGaze(); else hero.removeAttribute('gaze');
+  snippet();
+}
+function setGaze(){ const y=$('yaw').value, p=$('pitch').value; hero.setAttribute('gaze', `${y} ${p}`); $('yawOut').textContent=y+'°'; $('pitchOut').textContent=p+'°'; snippet(); }
+$('yaw').addEventListener('input', setGaze); $('pitch').addEventListener('input', setGaze);
+
+/* feel sliders */
+const bindSlider = (id, attr, fmt) => { const el=$(id), out=$(id+'Out');
+  el.addEventListener('input', () => { hero.setAttribute(attr, el.value); out.textContent = fmt(+el.value); snippet(); }); };
+bindSlider('jelly', 'jelly', v => v.toFixed(2));
+bindSlider('face', 'face-scale', v => v.toFixed(2));
+bindSlider('morph', 'morph', v => v.toFixed(2)+'s');
+
+/* actions */
+hero.addEventListener('click', () => hero.poke());
+$('pokeBtn').addEventListener('click', () => hero.poke());
+$('spinBtn').addEventListener('click', () => hero.spin());
+$('copyBtn').addEventListener('click', () => copy(hero.toSVG(), `${OrbAvatar.reactionLabel(hero.reaction)} SVG copied`));
+$('copySnippet').addEventListener('click', () => copy($('snippet').textContent, 'Markup copied'));
+
+function snippet(){
+  const a = [`reaction="${hero.reaction}"`, `color="${COLORS[color][1]}"`];
+  const j = $('jelly').value, f = $('face').value, m = $('morph').value;
+  a.push(`mode="${hero.mode}"`);
+  if (hero.mode==='fixed') a.push(`gaze="${$('yaw').value} ${$('pitch').value}"`);
+  if (+j !== .6) a.push(`jelly="${j}"`);
+  if (+f !== 1.6) a.push(`face-scale="${f}"`);
+  if (+m !== .42) a.push(`morph="${m}"`);
+  $('snippet').textContent = `<orb-avatar ${a.join(' ')}></orb-avatar>`;
+}
+setMode('follow');
+
+/* reaction sheet */
+const gridEl = $('grid');
+for (const k of OrbAvatar.reactions){
+  const label = OrbAvatar.reactionLabel(k), cell = document.createElement('div'); cell.className='cell';
+  cell.innerHTML = `<button type="button" class="cell-main" aria-label="Load ${label} in the playground"><orb-avatar reaction="${k}" size="72" mode="follow"></orb-avatar><span class="cell-name">${label}</span></button><button type="button" class="mini">Copy SVG</button>`;
+  gridEl.appendChild(cell);
+  const o = cell.querySelector('orb-avatar'); gridOrbs.push(o);
+  cell.querySelector('.cell-main').addEventListener('click', () => { hero.react(k); $('stage').scrollIntoView({behavior:RM?'auto':'smooth', block:'center'}); });
+  cell.querySelector('.mini').addEventListener('click', () => copy(o.toSVG(), `${label} SVG copied`));
+}
+
+/* sidebar crew */
+const CREW = [
+  {name:'Chief', color:'mint', time:'9:41', script:[['working','Assigning this week’s close tasks'],['done','Close checklist sent to the team'],['idle','Waiting on Ledger'],['thinking','Re-planning around the audit date']]},
+  {name:'Ledger', color:'tangerine', time:'9:12', script:[['working','Reconciling March bank statements'],['error','2 entries don’t match the bank feed'],['thinking','Matching Pix transfers to invoices'],['done','March reconciled · 412 entries']]},
+  {name:'Inbox', color:'iris', time:'8:55', badge:true, script:[['needs','3 invoices need your approval'],['working','Sorting supplier emails'],['done','Inbox at zero']]},
+  {name:'Payroll', color:'grape', time:'8:20', script:[['working','Calculating INSS and FGTS'],['done','Payslips ready for review'],['love','Everyone got paid on time'],['idle','Next run on the 5th']]},
+  {name:'Tax', color:'azure', time:'7:48', script:[['thinking','Checking the Simples Nacional bracket'],['working','Filling in October’s DAS'],['sad','Found a late fee on the ICMS slip'],['done','DAS generated']]},
+  {name:'Archive', color:'ember', time:'2:16', script:[['sleeping','Nothing to file overnight'],['working','Indexing 38 receipts'],['wink','Found the missing NF-e'],['done','Receipts filed']]},
+];
+const crewEl = $('crew');
+CREW.forEach((c,i) => {
+  const row = document.createElement('div'); row.className = 'row'+(i===0?' sel':'');
+  row.innerHTML = `<div class="av"><orb-avatar reaction="${c.script[0][0]}" color="${COLORS[c.color][1]}" size="42" mode="wander" label="${c.name}"></orb-avatar>${c.badge?'<span class="dot" aria-label="Unread"></span>':''}</div><div class="meta"><div class="l1"><b>${c.name}</b><time>${c.time}</time></div><div class="st"></div></div>`;
+  crewEl.appendChild(row);
+  const o = row.querySelector('orb-avatar'), st = row.querySelector('.st'); st.textContent = c.script[0][1];
+  let idx = 0;
+  const next = () => { idx=(idx+1)%c.script.length; const [e,txt]=c.script[idx]; o.react(e); st.style.opacity=0;
+    setTimeout(() => { st.textContent=txt; st.style.opacity=1; }, 180); setTimeout(next, 3800+Math.random()*3600); };
+  if (!RM) setTimeout(next, 2500+i*900+Math.random()*1500);
+});
+
+/* toast + clipboard */
+let toastT;
+function toast(msg){ const t=$('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(toastT); toastT=setTimeout(() => t.classList.remove('show'), 1800); }
+function copy(text, msg){
+  const fb=$('fallback');
+  const fallback = () => { fb.hidden=false; fb.value=text; fb.focus(); fb.select(); toast('Press Ctrl+C or ⌘C to copy'); setTimeout(() => { fb.hidden=true; }, 8000); };
+  try { navigator.clipboard.writeText(text).then(() => { fb.hidden=true; toast(msg); }, fallback); } catch { fallback(); }
+}
+})();
+</script>
